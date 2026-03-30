@@ -22,7 +22,7 @@ timeout /t 1 /nobreak >nul
 REM ─── 1. AARTHI Landing Backend (port 8000) ───────────────────────────────────
 echo [1/4] Starting AARTHI Landing Backend on port 8000...
 start "AARTHI Landing Backend" cmd /k ^
-  "cd /d c:\Lang\Aarthi-AI\AARTHI\backend && call venv\Scripts\activate.bat && uvicorn main:app --host 0.0.0.0 --port 8000 --reload && pause"
+  "cd /d c:\Lang\Aarthi-AI\AARTHI\backend && call ..\..\backend\venv\Scripts\activate.bat && uvicorn main:app --host 0.0.0.0 --port 8000 --reload && pause"
 timeout /t 3 /nobreak >nul
 
 REM ─── 2. AarthiAI Dashboard Backend (port 8001) ───────────────────────────────
