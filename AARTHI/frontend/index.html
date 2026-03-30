@@ -1,0 +1,1295 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AarthiAI — Smart Investing Starts Here</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        /* ═══════════════════════════════════════════════
+           ANALYZER OVERLAY — SPLIT PANEL
+        ═══════════════════════════════════════════════ */
+        #analyzer-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: #ffffff;
+            z-index: 2000;
+            overflow: hidden;
+        }
+
+        #analyzer-overlay.visible {
+            display: flex;
+        }
+
+        /* ── LEFT PANEL — Video ───────────────────────── */
+        .az-left {
+            position: relative;
+            flex: 0 0 48%;
+            min-width: 0;
+            background: #0a0f0a;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: flex 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 0.4s ease,
+                max-width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* When results are shown — collapse the left panel */
+        #analyzer-overlay.results-mode .az-left {
+            flex: 0 0 0%;
+            max-width: 0;
+            opacity: 0;
+            pointer-events: none;
+            overflow: hidden;
+        }
+
+        /* When results mode — right panel expands full width */
+        #analyzer-overlay.results-mode .az-right {
+            max-width: 780px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        /* decorative top-left brand mark */
+        .az-left-brand {
+            position: absolute;
+            top: 24px;
+            left: 28px;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .az-left-brand .logo-icon {
+            font-size: 18px;
+            background: linear-gradient(135deg, #609E45 0%, #4ADE80 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .az-left-brand .logo-text {
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 700;
+            font-size: 17px;
+            color: #fff;
+            letter-spacing: -0.02em;
+        }
+
+        /* back button lives on the left panel, top-right corner */
+        .az-back-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 10;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: rgba(255, 255, 255, 0.7);
+            padding: 8px 18px;
+            border-radius: 50px;
+            font-size: 0.82rem;
+            cursor: pointer;
+            transition: 0.2s;
+            font-family: var(--font-primary);
+            backdrop-filter: blur(8px);
+        }
+
+        .az-back-btn:hover {
+            border-color: #609E45;
+            color: #fff;
+            background: rgba(96, 158, 69, 0.15);
+        }
+
+        /* video fills the panel */
+        .az-video-wrap {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .az-video-wrap video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        /* gradient overlay at bottom of video for legibility */
+        .az-video-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 220px;
+            background: linear-gradient(to top, rgba(10, 15, 10, 0.92) 0%, transparent 100%);
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        /* tagline over the gradient */
+        .az-left-tagline {
+            position: absolute;
+            bottom: 36px;
+            left: 0;
+            right: 0;
+            padding: 0 32px;
+            z-index: 6;
+        }
+
+        .az-left-tagline h2 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.55rem;
+            font-weight: 700;
+            color: #fff;
+            line-height: 1.25;
+            letter-spacing: -0.03em;
+            margin-bottom: 8px;
+        }
+
+        .az-left-tagline h2 span {
+            background: linear-gradient(135deg, #4ADE80 0%, #609E45 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .az-left-tagline p {
+            font-size: 0.82rem;
+            color: rgba(255, 255, 255, 0.5);
+            line-height: 1.55;
+            max-width: 340px;
+        }
+
+        /* pill badges row */
+        .az-badges {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 14px;
+        }
+
+        .az-badge {
+            padding: 5px 13px;
+            border-radius: 50px;
+            font-size: 0.73rem;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            border: 1px solid rgba(96, 158, 69, 0.35);
+            color: #4ADE80;
+            background: rgba(96, 158, 69, 0.08);
+        }
+
+        /* ── RIGHT PANEL — Form ───────────────────────── */
+        .az-right {
+            flex: 1;
+            min-width: 0;
+            overflow-y: auto;
+            background: #ffffff;
+            display: flex;
+            flex-direction: column;
+            transition: max-width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .az-header {
+            text-align: center;
+            padding: 44px 20px 20px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        /* In results mode — header gets a back-to-form button */
+        #az-results-header {
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px 28px 0;
+        }
+
+        #analyzer-overlay.results-mode #az-results-header {
+            display: flex;
+        }
+
+        #analyzer-overlay.results-mode .az-header {
+            display: none;
+        }
+
+        .az-results-brand {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .az-results-brand .logo-icon {
+            font-size: 18px;
+            background: linear-gradient(135deg, #609E45 0%, #4ADE80 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .az-results-brand .logo-text {
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 700;
+            font-size: 17px;
+            color: #1a1a2a;
+            letter-spacing: -0.02em;
+        }
+
+        .az-results-back-btn {
+            background: #f5f5f5;
+            border: 1px solid #e8e8e8;
+            color: #555;
+            padding: 8px 18px;
+            border-radius: 50px;
+            font-size: 0.82rem;
+            cursor: pointer;
+            transition: 0.2s;
+            font-family: var(--font-primary);
+        }
+
+        .az-results-back-btn:hover {
+            border-color: #609E45;
+            color: #609E45;
+            background: rgba(96, 158, 69, 0.05);
+        }
+
+        .az-header h1 {
+            font-size: 1.8rem;
+            color: #609E45;
+            font-family: var(--font-display);
+            letter-spacing: -0.5px;
+        }
+
+        .az-header p {
+            color: #888;
+            margin-top: 6px;
+            font-size: 0.92rem;
+        }
+
+        .az-wrap {
+            max-width: 560px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 0 28px 80px;
+            flex: 1;
+        }
+
+        /* welcome banner */
+        .az-welcome {
+            text-align: center;
+            padding: 20px 0 6px;
+        }
+
+        .az-welcome-emoji {
+            font-size: 2rem;
+            margin-bottom: 4px;
+        }
+
+        .az-welcome-text {
+            font-size: 0.88rem;
+            color: #999;
+            line-height: 1.6;
+        }
+
+        /* progress bar */
+        .az-progress {
+            display: flex;
+            gap: 6px;
+            margin: 28px 0 6px;
+        }
+
+        .az-progress .seg {
+            flex: 1;
+            height: 4px;
+            border-radius: 2px;
+            background: #e8e8e8;
+            transition: background 0.3s;
+        }
+
+        .az-progress .seg.active {
+            background: #609E45;
+        }
+
+        .az-step-label {
+            font-size: 0.72rem;
+            color: #aaa;
+            margin-bottom: 18px;
+        }
+
+        .az-step {
+            display: none;
+        }
+
+        .az-step.visible {
+            display: block;
+            animation: fadeStep 0.35s ease-out;
+        }
+
+        @keyframes fadeStep {
+            from {
+                opacity: 0;
+                transform: translateY(12px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .az-step h2 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: #1a1a2a;
+            font-family: var(--font-display);
+        }
+
+        .az-step-desc {
+            font-size: 0.85rem;
+            color: #999;
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+
+        .fg {
+            margin-bottom: 18px;
+        }
+
+        .fg label {
+            display: block;
+            font-size: 0.82rem;
+            color: #666;
+            margin-bottom: 7px;
+            font-weight: 500;
+        }
+
+        .fg input,
+        .fg select {
+            width: 100%;
+            padding: 12px 14px;
+            background: rgba(0, 0, 0, 0.03);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            border-radius: 12px;
+            color: #1a1a2a;
+            font-size: 0.92rem;
+            outline: none;
+            font-family: var(--font-primary);
+            transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+        }
+
+        .fg input:focus,
+        .fg select:focus {
+            border-color: #609E45;
+            box-shadow: 0 0 0 3px rgba(96, 158, 69, 0.1);
+            background: rgba(96, 158, 69, 0.03);
+        }
+
+        .fg input::placeholder {
+            color: #bbb;
+        }
+
+        .fg select option {
+            background: #fff;
+            color: #333;
+        }
+
+        .lit-cards {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 6px;
+        }
+
+        .lit-card {
+            padding: 14px 16px;
+            border-radius: 12px;
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            background: rgba(0, 0, 0, 0.02);
+            cursor: pointer;
+            transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+        }
+
+        .lit-card:hover {
+            background: rgba(96, 158, 69, 0.03);
+            border-color: rgba(96, 158, 69, 0.2);
+        }
+
+        .lit-card.selected {
+            border-color: #609E45;
+            background: rgba(96, 158, 69, 0.06);
+            box-shadow: 0 0 0 3px rgba(96, 158, 69, 0.08);
+        }
+
+        .lit-card .lt {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: #1a1a2a;
+        }
+
+        .lit-card .ld {
+            font-size: 0.78rem;
+            color: #888;
+            margin-top: 3px;
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 12px;
+            margin-top: 22px;
+        }
+
+        .btn-prev {
+            flex: 1;
+            padding: 13px;
+            border-radius: 12px;
+            border: 1px solid #e0e0e0;
+            background: #fafafa;
+            color: #666;
+            font-size: 0.92rem;
+            cursor: pointer;
+            font-family: var(--font-primary);
+            transition: 0.2s;
+        }
+
+        .btn-prev:hover {
+            border-color: #ccc;
+            color: #333;
+        }
+
+        .btn-fwd {
+            flex: 2;
+            padding: 13px;
+            border-radius: 12px;
+            border: none;
+            background: linear-gradient(135deg, #609E45 0%, #4ADE80 100%);
+            color: #fff;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: var(--font-primary);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn-fwd:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 16px rgba(96, 158, 69, 0.3);
+        }
+
+        #az-loading {
+            display: none;
+            text-align: center;
+            padding: 60px 20px;
+            color: #888;
+            font-size: 0.95rem;
+        }
+
+        #az-loading .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #e8e8e8;
+            border-top: 3px solid #609E45;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        #az-results {
+            display: none;
+        }
+
+        /* Results animate in when shown */
+        #az-results.visible {
+            display: block;
+            animation: fadeStep 0.4s ease-out;
+        }
+
+        .rcard {
+            background: #fafafa;
+            border: 1px solid #eee;
+            border-radius: 14px;
+            padding: 22px;
+            margin-bottom: 18px;
+        }
+
+        .rcard-title {
+            font-size: 0.82rem;
+            color: #888;
+            margin-bottom: 16px;
+            font-weight: 600;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+        }
+
+        .headline-box {
+            background: rgba(96, 158, 69, 0.06);
+            border-radius: 10px;
+            padding: 14px 16px;
+            margin-bottom: 16px;
+        }
+
+        .headline-text {
+            color: #609E45;
+            font-weight: 700;
+            font-size: 1rem;
+        }
+
+        .sub-meta {
+            color: #888;
+            font-size: 0.82rem;
+            margin-top: 5px;
+        }
+
+        .sub-meta strong {
+            color: #333;
+        }
+
+        .slabel {
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            margin: 14px 0 8px;
+        }
+
+        .slabel.g {
+            color: #609E45;
+        }
+
+        .slabel.a {
+            color: #e6a23c;
+        }
+
+        .slabel.p {
+            color: #609E45;
+        }
+
+        .bitem {
+            font-size: 0.84rem;
+            color: #666;
+            padding: 3px 0;
+            line-height: 1.5;
+        }
+
+        .aitem {
+            font-size: 0.84rem;
+            color: #555;
+            background: rgba(96, 158, 69, 0.05);
+            border-left: 2px solid #609E45;
+            border-radius: 0 6px 6px 0;
+            padding: 8px 12px;
+            margin-bottom: 6px;
+        }
+
+        .score-row {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-top: 16px;
+        }
+
+        .score-circle {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            border: 3px solid #609E45;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .score-num {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #609E45;
+        }
+
+        .ded-item {
+            font-size: 0.78rem;
+            color: #888;
+            padding: 3px 0;
+            line-height: 1.5;
+        }
+
+        .ded-item span {
+            color: #ef5350;
+            font-weight: 600;
+        }
+
+        .wrow {
+            display: flex;
+            justify-content: space-between;
+            padding: 9px 0;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 0.88rem;
+        }
+
+        .wrow:last-child {
+            border-bottom: none;
+        }
+
+        .wlbl {
+            color: #666;
+        }
+
+        .wval.inc {
+            color: #609E45;
+            font-weight: 600;
+        }
+
+        .wval.ded {
+            color: #ef5350;
+            font-weight: 600;
+        }
+
+        .wval.sur {
+            color: #609E45;
+            font-weight: 700;
+            font-size: 1rem;
+        }
+
+        .alloc-bar {
+            display: flex;
+            height: 10px;
+            border-radius: 5px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .pcard {
+            border-radius: 12px;
+            border: 1px solid #eee;
+            border-left-width: 3px;
+            padding: 14px 16px;
+            margin-bottom: 12px;
+            background: #fafafa;
+        }
+
+        .ptop {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .plabel {
+            font-weight: 600;
+            font-size: 0.92rem;
+            color: #1a1a2a;
+        }
+
+        .pmeta {
+            font-size: 0.75rem;
+            color: #999;
+            margin-top: 3px;
+        }
+
+        .pamount {
+            font-size: 1.05rem;
+            font-weight: 700;
+            text-align: right;
+        }
+
+        .ppct {
+            font-size: 0.75rem;
+            color: #999;
+        }
+
+        .pwhy {
+            font-size: 0.8rem;
+            color: #666;
+            margin-top: 10px;
+            line-height: 1.55;
+        }
+
+        .btn-reanalyze {
+            width: 100%;
+            padding: 14px;
+            margin-top: 8px;
+            border-radius: 12px;
+            border: none;
+            background: linear-gradient(135deg, #609E45 0%, #4ADE80 100%);
+            color: #fff;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: var(--font-primary);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn-reanalyze:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 16px rgba(96, 158, 69, 0.3);
+        }
+
+        .err-box {
+            display: none;
+            background: #fff5f5;
+            border: 1px solid #feb2b2;
+            border-radius: 10px;
+            padding: 14px;
+            color: #e53e3e;
+            text-align: center;
+            font-size: 0.88rem;
+            margin-top: 16px;
+        }
+
+        /* ── Responsive: stack on small screens ─────── */
+        @media (max-width: 860px) {
+            #analyzer-overlay.visible {
+                flex-direction: column;
+                overflow-y: auto;
+            }
+
+            .az-left {
+                flex: 0 0 260px;
+                min-height: 260px;
+            }
+
+            /* Hide left panel in results mode on mobile too */
+            #analyzer-overlay.results-mode .az-left {
+                flex: 0 0 0 !important;
+                min-height: 0 !important;
+                max-height: 0;
+                opacity: 0;
+            }
+
+            .az-right {
+                overflow-y: visible;
+            }
+
+            .az-back-btn {
+                top: 12px;
+                right: 12px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <nav id="main-nav" class="nav-bar">
+        <div class="nav-logo">
+            <span class="logo-icon">◆</span>
+            <span class="logo-text">AarthiAI</span>
+        </div>
+        <div class="nav-links">
+            <a href="#" class="nav-link">Markets</a>
+            <a href="#" class="nav-link">Portfolio</a>
+            <a href="#" class="nav-link">Insights</a>
+            <a href="#" class="nav-link btn-nav" onclick="openAnalyzer(event)">Get Started</a>
+            <a href="../../frontend/index.html" class="nav-link btn-nav" style="margin-left:8px;background:linear-gradient(135deg,#1a6fd4,#38bdf8);border-color:transparent;">Stock Dashboard →</a>
+        </div>
+    </nav>
+
+    <section id="hero-section" class="hero">
+        <div id="globe-container" class="globe-container"></div>
+        <div id="hero-content." class="hero-content">
+            <h1 class="hero-title">
+                <span class="title-line">Invest Smarter</span>
+                <span class="title-line gradient-text">With AI-Powered</span>
+                <span class="title-line">Intelligence</span>
+            </h1>
+            <p class="hero-subtitle">Track India's top stocks with real time insights powered by artificial
+                intelligence. Know where you stand in the market. Scroll to explore Mumbai's financial heartbeat.</p>
+            <div class="scroll-indicator" id="scroll-indicator">
+                <div class="scroll-mouse">
+                    <div class="scroll-dot"></div>
+                </div>
+                <span class="scroll-text">Scroll to explore</span>
+            </div>
+        </div>
+        <div id="location-label" class="location-label">
+            <div class="location-pin"></div>
+            <div class="location-info">
+                <span class="location-city">Mumbai</span>
+                <span class="location-country">Financial Capital of India</span>
+            </div>
+        </div>
+        <canvas id="particle-canvas" class="particle-canvas"></canvas>
+    </section>
+
+    <section id="stocks-section" class="stocks-section">
+        <div class="stocks-bg-glow"></div>
+        <div class="stocks-container">
+            <div class="stocks-header">
+                <div class="ticker-tape-wrapper">
+                    <div class="ticker-tape">
+                        <div class="ticker-track">
+                            <span class="ticker-item"><span class="ticker-name">NIFTY 50</span> <span
+                                    class="ticker-price">22,456.80</span> <span
+                                    class="ticker-change up">+1.24%</span></span>
+                            <span class="ticker-sep">│</span>
+                            <span class="ticker-item"><span class="ticker-name">SENSEX</span> <span
+                                    class="ticker-price">73,890.45</span> <span
+                                    class="ticker-change up">+0.98%</span></span>
+                            <span class="ticker-sep">│</span>
+                            <span class="ticker-item"><span class="ticker-name">BANK NIFTY</span> <span
+                                    class="ticker-price">52,147.30</span> <span
+                                    class="ticker-change up">+0.56%</span></span>
+                            <span class="ticker-sep">│</span>
+                            <span class="ticker-item"><span class="ticker-name">NIFTY IT</span> <span
+                                    class="ticker-price">38,712.10</span> <span
+                                    class="ticker-change down">-1.02%</span></span>
+                            <span class="ticker-sep">│</span>
+                            <span class="ticker-item"><span class="ticker-name">NIFTY PHARMA</span> <span
+                                    class="ticker-price">21,344.66</span> <span
+                                    class="ticker-change up">+0.43%</span></span>
+                            <span class="ticker-sep">│</span>
+                            <span class="ticker-item"><span class="ticker-name">INDIA VIX</span> <span
+                                    class="ticker-price">13.24</span> <span
+                                    class="ticker-change down">-4.1%</span></span>
+                            <span class="ticker-sep">│</span>
+                            <span class="ticker-item"><span class="ticker-name">USD/INR</span> <span
+                                    class="ticker-price">83.44</span> <span
+                                    class="ticker-change up">+0.08%</span></span>
+                            <span class="ticker-sep">│</span>
+                            <span class="ticker-item"><span class="ticker-name">GOLD</span> <span
+                                    class="ticker-price">₹72,450</span> <span
+                                    class="ticker-change up">+0.32%</span></span>
+                            <span class="ticker-sep">│</span>
+                            <span class="ticker-item"><span class="ticker-name">MIDCAP 150</span> <span
+                                    class="ticker-price">18,924.55</span> <span
+                                    class="ticker-change down">-0.67%</span></span>
+                            <span class="ticker-sep">│</span>
+                            <span class="ticker-item"><span class="ticker-name">SMALLCAP 250</span> <span
+                                    class="ticker-price">14,387.20</span> <span
+                                    class="ticker-change up">+1.15%</span></span>
+                            <span class="ticker-sep">│</span>
+                            <span class="ticker-item"><span class="ticker-name">NIFTY 50</span> <span
+                                    class="ticker-price">22,456.80</span> <span
+                                    class="ticker-change up">+1.24%</span></span>
+                            <span class="ticker-sep">│</span>
+                            <span class="ticker-item"><span class="ticker-name">SENSEX</span> <span
+                                    class="ticker-price">73,890.45</span> <span
+                                    class="ticker-change up">+0.98%</span></span>
+                            <span class="ticker-sep">│</span>
+                            <span class="ticker-item"><span class="ticker-name">BANK NIFTY</span> <span
+                                    class="ticker-price">52,147.30</span> <span
+                                    class="ticker-change up">+0.56%</span></span>
+                            <span class="ticker-sep">│</span>
+                            <span class="ticker-item"><span class="ticker-name">NIFTY IT</span> <span
+                                    class="ticker-price">38,712.10</span> <span
+                                    class="ticker-change down">-1.02%</span></span>
+                            <span class="ticker-sep">│</span>
+                            <span class="ticker-item"><span class="ticker-name">NIFTY PHARMA</span> <span
+                                    class="ticker-price">21,344.66</span> <span
+                                    class="ticker-change up">+0.43%</span></span>
+                            <span class="ticker-sep">│</span>
+                            <span class="ticker-item"><span class="ticker-name">INDIA VIX</span> <span
+                                    class="ticker-price">13.24</span> <span
+                                    class="ticker-change down">-4.1%</span></span>
+                            <span class="ticker-sep">│</span>
+                            <span class="ticker-item"><span class="ticker-name">USD/INR</span> <span
+                                    class="ticker-price">83.44</span> <span
+                                    class="ticker-change up">+0.08%</span></span>
+                            <span class="ticker-sep">│</span>
+                            <span class="ticker-item"><span class="ticker-name">GOLD</span> <span
+                                    class="ticker-price">₹72,450</span> <span
+                                    class="ticker-change up">+0.32%</span></span>
+                            <span class="ticker-sep">│</span>
+                            <span class="ticker-item"><span class="ticker-name">MIDCAP 150</span> <span
+                                    class="ticker-price">18,924.55</span> <span
+                                    class="ticker-change down">-0.67%</span></span>
+                            <span class="ticker-sep">│</span>
+                            <span class="ticker-item"><span class="ticker-name">SMALLCAP 250</span> <span
+                                    class="ticker-price">14,387.20</span> <span
+                                    class="ticker-change up">+1.15%</span></span>
+                            <span class="ticker-sep">│</span>
+                        </div>
+                    </div>
+                </div>
+                <h2 class="stocks-title">Mumbai Stock Exchange</h2>
+                <p class="stocks-subtitle">Top performing stocks from India's financial capital</p>
+            </div>
+            <div id="stocks-grid" class="stocks-grid"></div>
+            <div class="market-stats">
+                <div class="stat-item">
+                    <span class="stat-value">22,456.80</span>
+                    <span class="stat-label">NIFTY 50</span>
+                    <span class="stat-change positive">+1.24%</span>
+                </div>
+                <div class="stat-divider"></div>
+                <div class="stat-item">
+                    <span class="stat-value">73,890.45</span>
+                    <span class="stat-label">SENSEX</span>
+                    <span class="stat-change positive">+0.98%</span>
+                </div>
+                <div class="stat-divider"></div>
+                <div class="stat-item">
+                    <span class="stat-value">₹8.2T</span>
+                    <span class="stat-label">Market Cap</span>
+                    <span class="stat-change positive">+2.1%</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="cta-section" class="cta-section">
+        <div class="cta-content">
+            <h2 class="cta-title">Ready to start investing?</h2>
+            <p class="cta-subtitle">Get a personalized investment plan built around your actual financial situation
+                not generic advice.</p>
+            <button class="cta-button" onclick="openAnalyzer(event)">
+                <span>Analyze My Profile</span>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M5 12h14M12 5l7 7-7 7" />
+                </svg>
+            </button>
+        </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════
+         ANALYZER OVERLAY — SPLIT LAYOUT
+    ═══════════════════════════════════════════════ -->
+    <div id="analyzer-overlay">
+
+        <!-- LEFT: Video Panel (hidden when results shown) -->
+        <div class="az-left">
+            <!-- Brand -->
+            <div class="az-left-brand">
+                <span class="logo-icon">◆</span>
+                <span class="logo-text">AarthiAI</span>
+            </div>
+
+            <!-- Back button -->
+            <button class="az-back-btn" onclick="closeAnalyzer()">← Back to Markets</button>
+
+            <!-- Video -->
+            <div class="az-video-wrap">
+                <video id="az-promo-video" autoplay muted loop playsinline preload="auto" src="aarthi-promo.mp4">
+                </video>
+            </div>
+
+            <!-- Gradient + tagline overlay -->
+            <div class="az-video-overlay"></div>
+            <div class="az-left-tagline">
+                <h2>Your money,<br><span>working smarter.</span></h2>
+                <p>India's first AI-powered financial advisor built for every income level — from ₹5,000 to ₹5,00,000+
+                </p>
+                <div class="az-badges">
+                    <span class="az-badge">🔒 Private & Secure</span>
+                    <span class="az-badge">⚡ 2-min setup</span>
+                    <span class="az-badge">📊 AI-Powered</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT: Form Panel -->
+        <div class="az-right">
+
+            <!-- Results-mode top bar (replaces header, has back-to-form button) -->
+            <div id="az-results-header">
+                <div class="az-results-brand">
+                    <span class="logo-icon">◆</span>
+                    <span class="logo-text">AarthiAI</span>
+                </div>
+                <button class="az-results-back-btn" onclick="closeAnalyzer()">← Back to Markets</button>
+            </div>
+
+            <!-- Normal header (shown during form steps) -->
+            <div class="az-header">
+                <h1>AarthiAI</h1>
+                <p>Your personal financial advisor, let's build a plan together</p>
+            </div>
+
+            <div class="az-wrap">
+
+                <div class="az-welcome">
+                    <div class="az-welcome-emoji" style="color: #1a1a2a;">WELCOME</div>
+                    <div class="az-welcome-text">We'll ask a few questions about your finances to create a plan that's
+                        truly
+                        made for you. It only takes 2 minutes.</div>
+                </div>
+
+                <div id="az-onboarding">
+                    <div class="az-progress">
+                        <div class="seg active" id="seg1"></div>
+                        <div class="seg" id="seg2"></div>
+                        <div class="seg" id="seg3"></div>
+                    </div>
+                    <div class="az-step-label" id="az-step-label">Step 1 of 3</div>
+
+                    <!-- step 1 -->
+                    <div class="az-step visible" id="az-step1">
+                        <h2>Let's start with your income</h2>
+                        <p class="az-step-desc">We tailor our advice to every income level, from ₹5,000 to ₹5,00,000+.
+                        </p>
+                        <div class="fg">
+                            <label>Your monthly in hand income (₹)</label>
+                            <input type="number" id="income" placeholder="e.g. 25000" min="0" />
+                        </div>
+                        <div class="fg">
+                            <label>Where do you live?</label>
+                            <select id="city_tier">
+                                <option value="metro">Metro City (Mumbai, Delhi, Bengaluru)</option>
+                                <option value="tier1" selected>Tier 1 City (Pune, Ahmedabad, Hyderabad)</option>
+                                <option value="tier2">Tier 2 City (Jaipur, Lucknow, Indore)</option>
+                                <option value="rural">Rural / Semi-urban area</option>
+                            </select>
+                        </div>
+                        <div class="fg">
+                            <label>How do you earn?</label>
+                            <select id="income_type">
+                                <option value="salaried" selected>Salaried (regular paycheck)</option>
+                                <option value="business">Business / Self-employed</option>
+                                <option value="agrarian">Agrarian / Farmer</option>
+                                <option value="seasonal">Seasonal / Freelance worker</option>
+                            </select>
+                        </div>
+                        <div class="btn-row">
+                            <button class="btn-fwd" style="flex:1" onclick="azNext(1)">Continue →</button>
+                        </div>
+                    </div>
+
+                    <!-- step 2 -->
+                    <div class="az-step" id="az-step2">
+                        <h2>Your family &amp; safety net</h2>
+                        <p class="az-step-desc">This helps us understand your responsibilities and build a plan that
+                            protects you first, before investing.</p>
+                        <div class="fg">
+                            <label>How many people depend on your income?</label>
+                            <select id="dependents">
+                                <option value="0" selected>Just me i.e no dependents</option>
+                                <option value="1-2">1–2 people (spouse, child, parent)</option>
+                                <option value="3-4">3–4 people</option>
+                                <option value="5+">5 or more people</option>
+                            </select>
+                        </div>
+                        <div class="fg">
+                            <label>Do you have a provident fund?</label>
+                            <select id="pf_status">
+                                <option value="epf" selected>Yes, EPF (employer deducts it)</option>
+                                <option value="ppf">Yes, PPF (I contribute myself)</option>
+                                <option value="nps">Yes, NPS (National Pension)</option>
+                                <option value="none">No provident fund right now</option>
+                            </select>
+                        </div>
+                        <div class="fg">
+                            <label>How many months of expenses do you have saved?</label>
+                            <select id="emergency_fund">
+                                <option value="0-1" selected>Less than 1 month</option>
+                                <option value="2-3">2–3 months</option>
+                                <option value="4-5">4–5 months</option>
+                                <option value="6+">6+ months</option>
+                            </select>
+                        </div>
+                        <div class="fg">
+                            <label>Do you have any active loan or EMI? (₹/month)</label>
+                            <input type="number" id="monthly_emi" placeholder="e.g. 5000 (enter 0 if none)" min="0"
+                                value="0" />
+                        </div>
+                        <div class="fg">
+                            <label>What type of loan is it?</label>
+                            <select id="loan_type">
+                                <option value="none" selected>No active loan</option>
+                                <option value="home">Home Loan</option>
+                                <option value="education">Education Loan</option>
+                                <option value="personal">Personal Loan</option>
+                                <option value="credit_card">Credit Card Debt</option>
+                            </select>
+                        </div>
+                        <div class="btn-row">
+                            <button class="btn-prev" onclick="azBack(2)">← Back</button>
+                            <button class="btn-fwd" onclick="azNext(2)">Continue →</button>
+                        </div>
+                    </div>
+
+                    <!-- step 3 -->
+                    <div class="az-step" id="az-step3">
+                        <h2>Your investing experience</h2>
+                        <p class="az-step-desc">Whether you're brand new or a seasoned investor, we'll match
+                            recommendations
+                            to your comfort level.</p>
+                        <div class="fg">
+                            <label>How would you describe your investment knowledge?</label>
+                            <div class="lit-cards">
+                                <div class="lit-card selected" data-val="1" onclick="selectLit(1)">
+                                    <div class="lt">Beginner</div>
+                                    <div class="ld">I've heard of SIP but have never invested</div>
+                                </div>
+                                <div class="lit-card" data-val="2" onclick="selectLit(2)">
+                                    <div class="lt">Intermediate</div>
+                                    <div class="ld">I know about SIP, NAV, and mutual funds</div>
+                                </div>
+                                <div class="lit-card" data-val="3" onclick="selectLit(3)">
+                                    <div class="lt">Advanced</div>
+                                    <div class="ld">I understand RSI, MACD, and pick my own funds</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="fg" style="margin-top:16px">
+                            <label>How close is your nearest bank or ATM?</label>
+                            <select id="bank_distance">
+                                <option value="<1km" selected>Within walking distance (&lt;1 km)</option>
+                                <option value="1-5km">A short ride away (1–5 km)</option>
+                                <option value="5-15km">Somewhat far (5–15 km)</option>
+                                <option value=">15km">Pretty far (&gt;15 km)</option>
+                            </select>
+                        </div>
+                        <div class="fg">
+                            <label>Has your family invested before?</label>
+                            <select id="first_gen">
+                                <option value="first_gen" selected>No, I'd be the first in my family to invest</option>
+                                <option value="some_exposure">Somewhat, family has some experience</option>
+                                <option value="experienced">Yes, investing runs in the family</option>
+                            </select>
+                        </div>
+                        <div class="btn-row">
+                            <button class="btn-prev" onclick="azBack(3)">← Back</button>
+                            <button class="btn-fwd" onclick="submitForm()">Build My Plan →</button>
+                        </div>
+                    </div>
+
+                    <div class="err-box" id="err-box"></div>
+                </div>
+
+                <div id="az-loading">
+                    <div class="loading-spinner"></div>
+                    <div>Crunching your numbers…<br><span style="font-size:0.82rem;color:#aaa">Analyzing income,
+                            expenses,
+                            and best instruments for you</span></div>
+                </div>
+
+                <div id="az-results">
+
+                    <div class="rcard">
+                        <div class="rcard-title">Your Financial Profile</div>
+                        <div class="headline-box">
+                            <div class="headline-text" id="r-headline"></div>
+                            <div class="sub-meta" id="r-submeta"></div>
+                        </div>
+                        <div id="r-strengths"></div>
+                        <div id="r-risks"></div>
+                        <div id="r-actions"></div>
+                        <div class="score-row">
+                            <div class="score-circle">
+                                <div class="score-num" id="r-score"></div>
+                            </div>
+                            <div>
+                                <div style="font-size:0.82rem;color:#aaa;font-weight:600;margin-bottom:6px">Equity Score
+                                </div>
+                                <div id="r-deductions"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="rcard">
+                        <div class="rcard-title">Real Investable Surplus</div>
+                        <div id="r-waterfall"></div>
+                    </div>
+
+                    <div class="rcard">
+                        <div class="rcard-title">Your Investment Plan</div>
+                        <div class="alloc-bar" id="r-allocbar"></div>
+                        <div id="r-plan"></div>
+                    </div>
+
+                    <button class="btn-reanalyze" onclick="resetAnalyzer()">Re-analyze with Different Profile</button>
+                </div>
+
+            </div>
+        </div>
+        <!-- /RIGHT -->
+
+    </div>
+    <!-- /analyzer-overlay -->
+
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+    <script src="app.js"></script>
+    <script src="analyzer.js"></script>
+
+    <script>
+        function openAnalyzer(e) {
+            if (e) e.preventDefault();
+            const overlay = document.getElementById("analyzer-overlay");
+            overlay.classList.add("visible");
+            overlay.classList.remove("results-mode"); // ensure form mode on open
+            document.body.style.overflow = "hidden";
+            resetAnalyzer();
+            const vid = document.getElementById("az-promo-video");
+            if (vid) { vid.currentTime = 0; vid.play().catch(() => { }); }
+        }
+
+        function closeAnalyzer() {
+            const overlay = document.getElementById("analyzer-overlay");
+            overlay.classList.remove("visible");
+            overlay.classList.remove("results-mode");
+            document.body.style.overflow = "";
+        }
+
+        // Hook into the results display — called by analyzer.js when results are ready
+        // We wrap the original showResults logic to also toggle results-mode
+        function enterResultsMode() {
+            const overlay = document.getElementById("analyzer-overlay");
+            overlay.classList.add("results-mode");
+            // Pause and reset the video to free resources
+            const vid = document.getElementById("az-promo-video");
+            if (vid) { vid.pause(); vid.currentTime = 0; }
+            // Scroll the right panel back to top
+            const rightPanel = document.querySelector(".az-right");
+            if (rightPanel) rightPanel.scrollTop = 0;
+        }
+
+        function exitResultsMode() {
+            const overlay = document.getElementById("analyzer-overlay");
+            overlay.classList.remove("results-mode");
+            // Resume video
+            const vid = document.getElementById("az-promo-video");
+            if (vid) { vid.play().catch(() => { }); }
+        }
+
+        // Patch resetAnalyzer to also exit results mode
+        const _originalResetAnalyzer = window.resetAnalyzer;
+        window.resetAnalyzer = function () {
+            exitResultsMode();
+            if (typeof _originalResetAnalyzer === "function") _originalResetAnalyzer();
+        };
+
+        // Patch showResults (from analyzer.js) to enter results mode
+        // We do this after scripts load via a MutationObserver-free approach:
+        // analyzer.js should call window.onResultsReady() or we patch after DOMContentLoaded
+        document.addEventListener("DOMContentLoaded", () => {
+            // Intercept the display of #az-results by observing its style changes
+            const resultsEl = document.getElementById("az-results");
+            if (resultsEl) {
+                const observer = new MutationObserver((mutations) => {
+                    for (const mutation of mutations) {
+                        if (mutation.attributeName === "style" || mutation.attributeName === "class") {
+                            const isVisible =
+                                resultsEl.style.display !== "none" &&
+                                resultsEl.style.display !== "" ||
+                                resultsEl.classList.contains("visible");
+                            if (isVisible) {
+                                enterResultsMode();
+                            }
+                        }
+                    }
+                });
+                observer.observe(resultsEl, { attributes: true });
+            }
+        });
+    </script>
+</body>
+
+</html>
