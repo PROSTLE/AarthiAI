@@ -1,8 +1,576 @@
 // ============================================================================
+// SPA NAVIGATION
+// ============================================================================
+
+const API = "http://127.0.0.1:8000";
+
+const VIEWS = ["markets", "funds", "sip", "company", "orders"];
+
+function navigateTo(view) {
+  // Hide all views
+  VIEWS.forEach(v => {
+    const el = document.getElementById(`view-${v}`);
+    if (el) el.classList.add("hidden");
+  });
+
+  // Show target
+  const target = document.getElementById(`view-${view}`);
+  if (target) target.classList.remove("hidden");
+
+  // Update nav active states (topnav + sidenav)
+  VIEWS.forEach(v => {
+    const tn = document.getElementById(`nav-${v}`);
+    const sn = document.getElementById(`snav-${v}`);
+    const isActive = v === view;
+    if (tn) tn.classList.toggle("active", isActive);
+    if (sn) sn.classList.toggle("active", isActive);
+  });
+
+  // Toggle contextual search bars
+  const marketsSearch = document.getElementById("marketsSearch");
+  const analyzeBtn    = document.getElementById("analyzeBtn");
+  const fundsSearch   = document.getElementById("fundsSearch");
+  const companySearch = document.getElementById("companySearch");
+  const companyAnalyzeBtn = document.getElementById("companyAnalyzeBtn");
+
+  [marketsSearch, analyzeBtn, fundsSearch, companySearch, companyAnalyzeBtn].forEach(el => el && el.classList.add("hidden"));
+
+  if (view === "markets") {
+    marketsSearch && marketsSearch.classList.remove("hidden");
+    analyzeBtn    && analyzeBtn.classList.remove("hidden");
+  } else if (view === "funds") {
+    fundsSearch && fundsSearch.classList.remove("hidden");
+    if (!_fundsLoaded) { loadFunds(); loadTopFunds(); _fundsLoaded = true; }
+  } else if (view === "company") {
+    companySearch && companySearch.classList.remove("hidden");
+    companyAnalyzeBtn && companyAnalyzeBtn.classList.remove("hidden");
+  } else if (view === "orders") {
+    // orders view uses existing trading view logic — init account chart
+    if (window.initAccountChart) initAccountChart();
+  }
+
+  // Push state for back button support
+  history.pushState({ view }, "", `#${view}`);
+}
+
+// Back button support
+window.addEventListener("popstate", e => {
+  if (e.state && e.state.view) navigateTo(e.state.view);
+});
+
+// Helper: load a ticker directly from the markets view empty state hints
+function loadTickerDirect(ticker) {
+  navigateTo("markets");
+  document.getElementById("tickerInput").value = ticker;
+  loadTicker();
+}
+
+// ============================================================================
+// MUTUAL FUNDS MODULE
+// ============================================================================
+
+let _fundsLoaded = false;
+let allFunds = [];
+let scatterChart = null;
+
+async function loadFunds() {
+  try {
+    const res = await fetch(`${API}/api/mutual-funds`);
+    const data = await res.json();
+    allFunds = data.funds;
+    renderFundList(allFunds);
+    renderScatterChart(allFunds);
+  } catch (e) {
+    const el = document.getElementById("fundList");
+    if (el) el.innerHTML = `<div class="mf-loading" style="color:var(--on-tertiary-cont)">⚠ Backend offline — start the FastAPI server</div>`;
+  }
+}
+
+async function loadTopFunds() {
+  try {
+    const res = await fetch(`${API}/api/mutual-funds/top`);
+    const data = await res.json();
+    renderAlphaList(data.top_alpha, "topAlphaList");
+    renderAlphaList(data.top_stable, "topStableList");
+    const aiEl = document.getElementById("aiSignalText");
+    if (aiEl) aiEl.textContent = data.ai_signal;
+    renderAmcTable(allFunds);
+  } catch (e) {}
+}
+
+function renderFundList(funds) {
+  const el = document.getElementById("fundList");
+  if (!el) return;
+  if (!funds.length) { el.innerHTML = `<div class="mf-loading">No funds found in this category.</div>`; return; }
+  el.innerHTML = funds.map(f => {
+    const catClass = { Equity: "badge-eq", Debt: "badge-debt", Hybrid: "badge-hybrid", Index: "badge-index" }[f.category] || "badge-eq";
+    const riskClass = { Low: "badge-risk-low", Moderate: "badge-risk-mod", High: "badge-risk-high", "Very High": "badge-risk-vh" }[f.risk] || "badge-risk-mod";
+    const stars = "★".repeat(f.rating) + "☆".repeat(5 - f.rating);
+    const initial = f.amc[0];
+    return `
+      <div class="fund-card" onclick="openSipForFund('${f.name}')">
+        <div class="fund-avatar">${initial}</div>
+        <div class="fund-info">
+          <h4>${f.name}</h4>
+          <div class="fund-meta">
+            <span class="fund-badge ${catClass}">${f.sub_category}</span>
+            <span class="fund-badge ${riskClass}">${f.risk}</span>
+            <span class="badge-stars">${stars}</span>
+          </div>
+        </div>
+        <div class="fund-stats">
+          <div class="fs-row"><span class="fs-label">NAV</span><span class="fs-val">₹${f.nav.toFixed(2)}</span></div>
+          <div class="fs-row"><span class="fs-label">AUM</span><span class="fs-val">₹${(f.aum_cr/100).toFixed(0)}B</span></div>
+          <div class="fs-row"><span class="fs-label">Exp.</span><span class="fs-val">${f.expense_ratio}%</span></div>
+        </div>
+        <div class="fund-returns">
+          <div class="fr-value">+${f.return_1y}%</div>
+          <div class="fr-label">1Y Return</div>
+          <div style="font-size:11px;color:var(--outline);margin-top:4px">3Y: +${f.return_3y}% · 5Y: +${f.return_5y}%</div>
+        </div>
+        <div class="fund-action">
+          <button class="btn-invest" onclick="event.stopPropagation();openSipForFund('${f.name}')">Start SIP</button>
+          <div class="min-sip">Min ₹${f.min_sip}/mo</div>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+function renderAlphaList(funds, containerId) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  el.innerHTML = funds.map(f => `
+    <div class="alpha-item">
+      <div>
+        <div class="alpha-name">${f.name}</div>
+        <div class="alpha-sub">${f.amc} · ${f.sub_category}</div>
+      </div>
+      <div class="alpha-return">+${f.return_1y}%</div>
+    </div>
+  `).join("");
+}
+
+function renderAmcTable(funds) {
+  const el = document.getElementById("amcTableBody");
+  if (!el || !funds.length) return;
+  const amcs = {};
+  funds.forEach(f => {
+    if (!amcs[f.amc]) amcs[f.amc] = { returns: [], expense: [] };
+    amcs[f.amc].returns.push(f.return_3y);
+    amcs[f.amc].expense.push(f.expense_ratio);
+  });
+  const rows = Object.entries(amcs).map(([amc, d]) => {
+    const avgReturn = (d.returns.reduce((a,b)=>a+b,0)/d.returns.length).toFixed(1);
+    const avgExp = (d.expense.reduce((a,b)=>a+b,0)/d.expense.length).toFixed(2);
+    const conf = Math.min(95, Math.round(50 + avgReturn * 1.8));
+    const risk = avgReturn > 20 ? "Aggressive" : avgReturn > 14 ? "Moderate" : "Conservative";
+    const riskColor = avgReturn > 20 ? "var(--on-tertiary-cont)" : avgReturn > 14 ? "#eab308" : "var(--secondary)";
+    return `<tr>
+      <td class="amc-name">${amc} Mutual Fund</td>
+      <td class="amc-return">+${avgReturn}%</td>
+      <td style="color:var(--on-surf-var)">${avgExp}%</td>
+      <td><span style="padding:2px 8px;border-radius:3px;background:rgba(255,255,255,0.05);color:${riskColor};font-size:11px;font-weight:700">${risk}</span></td>
+      <td><div class="conf-bar-wrap"><div class="conf-bar-fill" style="width:${conf}%"></div></div></td>
+    </tr>`;
+  });
+  el.innerHTML = rows.join("");
+}
+
+function renderScatterChart(funds) {
+  const canvas = document.getElementById("scatterChart");
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  if (scatterChart) scatterChart.destroy();
+  scatterChart = new Chart(ctx, {
+    type: "scatter",
+    data: {
+      datasets: [{
+        label: "Funds",
+        data: funds.map(f => ({ x: f.expense_ratio, y: f.return_3y, label: f.name })),
+        backgroundColor: funds.map(f => f.return_3y > 25 ? "rgba(64,229,108,0.7)" : f.return_3y > 15 ? "rgba(168,232,255,0.7)" : "rgba(133,147,152,0.5)"),
+        borderColor: "transparent",
+        pointRadius: funds.map(f => Math.max(6, Math.min(18, f.aum_cr / 5000))),
+        pointHoverRadius: funds.map(f => Math.max(8, Math.min(22, f.aum_cr / 5000))),
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { backgroundColor: "#1a1c20", borderColor: "rgba(60,73,78,0.3)", borderWidth: 1,
+          callbacks: { label: c => [`${c.raw.label}`, `Expense: ${c.raw.x}%`, `3Y Return: +${c.raw.y}%`] } }
+      },
+      scales: {
+        x: { title: { display: true, text: "Expense Ratio (%)", color: "#859398", font: { size: 10 } }, grid: { color: "rgba(60,73,78,0.1)" }, ticks: { color: "#859398" } },
+        y: { title: { display: true, text: "3Y Annualized Return (%)", color: "#859398", font: { size: 10 } }, grid: { color: "rgba(60,73,78,0.1)" }, ticks: { color: "#859398" } }
+      }
+    }
+  });
+}
+
+function filterFunds(cat, btn) {
+  document.querySelectorAll(".cat-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  const filtered = cat === "all" ? allFunds : allFunds.filter(f => f.category === cat);
+  renderFundList(filtered);
+  renderScatterChart(filtered);
+}
+
+function openSipForFund(name) {
+  navigateTo("sip");
+  document.getElementById("fundCat").value = "12";
+  applySipPreset("12");
+}
+
+// MF search filter (wired to mfSearch in topnav)
+document.addEventListener("DOMContentLoaded", () => {
+  const mfSearchEl = document.getElementById("mfSearch");
+  if (mfSearchEl) {
+    mfSearchEl.addEventListener("input", e => {
+      const q = e.target.value.toLowerCase();
+      if (!q) { renderFundList(allFunds); return; }
+      renderFundList(allFunds.filter(f =>
+        f.name.toLowerCase().includes(q) || f.amc.toLowerCase().includes(q) || f.sub_category.toLowerCase().includes(q)
+      ));
+    });
+  }
+});
+
+// ============================================================================
+// SIP CALCULATOR MODULE
+// ============================================================================
+
+let projChart = null;
+
+function syncSipInput(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.value = val;
+  const displayMap = { sipAmt: "sipAmtDisplay", sipYrs: "sipYrsDisplay", sipRet: "sipRetDisplay", stepUp: "stepUpDisplay" };
+  const dispEl = document.getElementById(displayMap[id]);
+  if (dispEl) {
+    dispEl.textContent = id === "sipAmt" ? "₹" + Number(val).toLocaleString("en-IN") : val + (id === "sipYrs" ? " Years" : "%");
+  }
+}
+function syncSipSlider(sliderId, val) {
+  const el = document.getElementById(sliderId);
+  if (el) el.value = val;
+}
+function updateSipDisplay(id, text) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = text;
+}
+function toggleStepUp() {
+  const on = document.getElementById("stepUpToggle").checked;
+  document.getElementById("stepUpGroup").classList.toggle("hidden", !on);
+}
+function applySipPreset(val) {
+  if (!val) return;
+  const rEl = document.getElementById("sipRet");
+  const sEl = document.getElementById("sipRetSlider");
+  const dEl = document.getElementById("sipRetDisplay");
+  if (rEl) rEl.value = val;
+  if (sEl) sEl.value = val;
+  if (dEl) dEl.textContent = val + "%";
+}
+
+async function calculateSIP() {
+  const sipAmt = parseFloat(document.getElementById("sipAmt").value);
+  const sipYrs = parseInt(document.getElementById("sipYrs").value);
+  const sipRet = parseFloat(document.getElementById("sipRet").value);
+  const stepUpOn = document.getElementById("stepUpToggle").checked;
+  const stepUpVal = stepUpOn ? parseFloat(document.getElementById("stepUp").value) : 0;
+  try {
+    const res = await fetch(`${API}/api/sip/calculate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ monthly_amount: sipAmt, years: sipYrs, expected_return_pct: sipRet, step_up_pct: stepUpVal })
+    });
+    const data = await res.json();
+    renderSipResults(data);
+  } catch (e) {
+    renderSipResults(computeSIPClientSide(sipAmt, sipYrs, sipRet, stepUpVal));
+  }
+}
+
+function computeSIPClientSide(monthly, years, ret, stepUp) {
+  const r = ret / 100 / 12, su = stepUp / 100;
+  let corpus = 0, invested = 0, m = monthly;
+  const timeline = [];
+  for (let yr = 1; yr <= years; yr++) {
+    if (yr > 1 && su > 0) m *= (1 + su);
+    for (let mo = 0; mo < 12; mo++) { corpus = (corpus + m) * (1 + r); invested += m; }
+    timeline.push({ year: yr, invested: Math.round(invested), corpus: Math.round(corpus), wealth_gained: Math.round(corpus - invested) });
+  }
+  const scenarios = [{ label: "Conservative", return_pct: 8 }, { label: "Moderate", return_pct: 12 }, { label: "Aggressive", return_pct: 16 }].map(s => {
+    const sr = s.return_pct / 100 / 12; let c = 0, inv = 0, sm = monthly;
+    for (let yr = 0; yr < years; yr++) {
+      if (yr > 0 && su > 0) sm *= (1 + su);
+      for (let mo = 0; mo < 12; mo++) { c = (c + sm) * (1 + sr); inv += sm; }
+    }
+    return { ...s, maturity_value: Math.round(c), total_invested: Math.round(inv), wealth_gained: Math.round(c - inv) };
+  });
+  return { monthly_amount: monthly, years, expected_return_pct: ret, step_up_pct: stepUp, total_invested: Math.round(invested), maturity_value: Math.round(corpus), wealth_gained: Math.round(corpus - invested), timeline, scenarios };
+}
+
+function renderSipResults(data) {
+  const fmt = v => "₹" + Math.round(v).toLocaleString("en-IN");
+  const wPct = data.total_invested > 0 ? ((data.wealth_gained / data.total_invested) * 100).toFixed(0) : 0;
+  document.getElementById("sipResults").innerHTML = `
+    <div class="results-metrics">
+      <div class="result-metric-card"><div class="rm-label">Total Invested</div><div class="rm-value">${fmt(data.total_invested)}</div><div class="rm-sub">Over ${data.years} years</div></div>
+      <div class="result-metric-card"><div class="rm-label">Maturity Value</div><div class="rm-value primary">${fmt(data.maturity_value)}</div><div class="rm-sub">At ${data.expected_return_pct}% CAGR</div></div>
+      <div class="result-metric-card"><div class="rm-label">Wealth Gained</div><div class="rm-value secondary">${fmt(data.wealth_gained)}</div><div class="rm-sub">+${wPct}% on investment</div></div>
+      <div class="result-metric-card"><div class="rm-label">Monthly SIP</div><div class="rm-value">₹${Math.round(data.monthly_amount).toLocaleString("en-IN")}</div><div class="rm-sub">${data.step_up_pct > 0 ? "+" + data.step_up_pct + "% step-up/yr" : "Fixed SIP"}</div></div>
+    </div>
+    <div class="chart-card-sip"><h3>📈 Wealth Growth Projection</h3><div class="sip-chart-wrap"><canvas id="sipChart"></canvas></div></div>
+    <div>
+      <h3 style="font-family:var(--font-headline);font-size:18px;font-weight:700;margin-bottom:14px">🎯 Scenario Comparison</h3>
+      <div class="scenario-grid">
+        ${data.scenarios.map(s => `
+          <div class="scenario-card ${s.label.toLowerCase()}">
+            <div class="sc-label ${s.label.toLowerCase()}">${s.label}</div>
+            <div class="sc-return">Assumed return: ${s.return_pct}% p.a.</div>
+            <div class="sc-maturity">${fmt(s.maturity_value)}</div>
+            <div class="sc-gained">Gains: ${fmt(s.wealth_gained)}</div>
+          </div>`).join("")}
+      </div>
+    </div>
+    <div class="timeline-table-wrap">
+      <h3>📅 Year-by-Year Breakdown</h3>
+      <div style="overflow-x:auto">
+        <table class="timeline-table">
+          <thead><tr><th>Year</th><th>Total Invested</th><th>Corpus Value</th><th>Wealth Gained</th><th>Multiplier</th></tr></thead>
+          <tbody>
+            ${data.timeline.map(t => `<tr>
+              <td>Year ${t.year}</td><td>${fmt(t.invested)}</td>
+              <td class="tl-corpus">${fmt(t.corpus)}</td>
+              <td class="tl-gained">${fmt(t.wealth_gained)}</td>
+              <td>${t.invested > 0 ? (t.corpus/t.invested).toFixed(2) : "1.00"}x</td>
+            </tr>`).join("")}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+  setTimeout(() => {
+    const ctx = document.getElementById("sipChart");
+    if (!ctx) return;
+    if (projChart) projChart.destroy();
+    projChart = new Chart(ctx.getContext("2d"), {
+      type: "line",
+      data: {
+        labels: data.timeline.map(t => "Y" + t.year),
+        datasets: [
+          { label: "Corpus Value", data: data.timeline.map(t => t.corpus), borderColor: "#a8e8ff", backgroundColor: "rgba(168,232,255,0.08)", fill: true, tension: 0.4, pointRadius: 0, borderWidth: 2 },
+          { label: "Amount Invested", data: data.timeline.map(t => t.invested), borderColor: "rgba(133,147,152,0.6)", backgroundColor: "rgba(133,147,152,0.04)", fill: true, tension: 0.4, pointRadius: 0, borderWidth: 1, borderDash: [4,4] }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        interaction: { mode: "index", intersect: false },
+        plugins: {
+          legend: { labels: { color: "#bbc9cf", font: { size: 11 }, boxWidth: 12 } },
+          tooltip: { backgroundColor: "#1a1c20", borderColor: "rgba(60,73,78,0.3)", borderWidth: 1,
+            callbacks: { label: c => `${c.dataset.label}: ₹${Math.round(c.raw).toLocaleString("en-IN")}` } }
+        },
+        scales: {
+          x: { grid: { color: "rgba(60,73,78,0.1)" }, ticks: { color: "#859398", maxTicksLimit: 10 } },
+          y: { grid: { color: "rgba(60,73,78,0.1)" }, ticks: { color: "#859398",
+            callback: v => "₹" + (v >= 1e7 ? (v/1e7).toFixed(1) + "Cr" : v >= 1e5 ? (v/1e5).toFixed(1) + "L" : v) } }
+        }
+      }
+    });
+  }, 50);
+}
+
+// ============================================================================
+// COMPANY INTELLIGENCE MODULE
+// ============================================================================
+
+let coChart = null;
+let _coData = null;
+
+function handleCompanySearchInput() {
+  // Suggestions handled by existing ticker search logic — no-op here, search fires on Enter
+}
+
+async function loadCompany() {
+  const input = document.getElementById("companySearchInput");
+  if (!input) return;
+  const ticker = input.value.trim().toUpperCase();
+  if (!ticker) return;
+
+  document.getElementById("coEmpty").style.display = "none";
+  document.getElementById("coLoading").style.display = "block";
+  const content = document.getElementById("companyContent");
+  content.classList.remove("visible");
+
+  try {
+    const res = await fetch(`${API}/api/company/${encodeURIComponent(ticker)}`);
+    if (!res.ok) throw new Error("Not found");
+    const d = await res.json();
+    _coData = d;
+    renderCompany(d);
+  } catch (e) {
+    // Fallback: use existing stock summary API
+    try {
+      const res2 = await fetch(`${API}/api/stock/summary/${encodeURIComponent(ticker)}`);
+      const d2 = await res2.json();
+      renderCompanyFromSummary(d2, ticker);
+    } catch (e2) {
+      document.getElementById("coLoading").style.display = "none";
+      document.getElementById("coEmpty").style.display = "block";
+      document.getElementById("coEmpty").innerHTML = `
+        <div class="co-empty"><div class="icon">⚠</div>
+        <h3>Company Not Found</h3>
+        <p>Try adding .NS (NSE) or .BO (BSE) suffix. Example: RELIANCE.NS</p></div>`;
+    }
+  }
+}
+
+function loadCompanyDirect(ticker) {
+  navigateTo("company");
+  const el = document.getElementById("companySearchInput");
+  if (el) { el.value = ticker; loadCompany(); }
+}
+
+function renderCompanyFromSummary(d, ticker) {
+  document.getElementById("coLoading").style.display = "none";
+  const content = document.getElementById("companyContent");
+  content.classList.add("visible");
+
+  const price = d.price || 0;
+  const change = d.change_pct || 0;
+  const isUp = change >= 0;
+  const name = d.company_name || ticker;
+
+  document.getElementById("coHeaderBar").innerHTML = `
+    <div>
+      <div class="co-badge-row">
+        <span class="co-badge badge-primary">${d.exchange || "NSE"}</span>
+        <span class="co-badge badge-outline">${d.sector || "Equity"}</span>
+      </div>
+      <div class="co-name">${name}</div>
+      <div class="co-desc">${d.industry || ""} · ${ticker}</div>
+    </div>
+    <div class="co-header-right">
+      <div class="co-price" style="color:${isUp?"var(--secondary)":"var(--on-tertiary-cont)"}">₹${price.toLocaleString("en-IN")}</div>
+      <div class="co-change" style="color:${isUp?"var(--secondary)":"var(--on-tertiary-cont)"}">${isUp?"+":""}${change.toFixed(2)}%</div>
+      <div class="co-mktcap">Market Cap: ${d.market_cap_fmt || "—"}</div>
+    </div>
+  `;
+
+  // Asset grid
+  const info = d.info || {};
+  document.getElementById("coAssetGrid").innerHTML = [
+    { icon: "📊", label: "P/E Ratio", value: d.pe_ratio ? d.pe_ratio.toFixed(1) : "—", sub: "Price / Earnings" },
+    { icon: "📈", label: "EPS (TTM)", value: d.eps ? "₹" + d.eps.toFixed(2) : "—", sub: "Earnings Per Share" },
+    { icon: "🏦", label: "52W High", value: d.week_52_high ? "₹" + d.week_52_high.toFixed(2) : "—", sub: "Yearly high" },
+    { icon: "📉", label: "52W Low", value: d.week_52_low ? "₹" + d.week_52_low.toFixed(2) : "—", sub: "Yearly low" },
+    { icon: "💰", label: "Dividend Yield", value: d.dividend_yield ? d.dividend_yield.toFixed(2) + "%" : "—", sub: "Annual yield" },
+    { icon: "📦", label: "Volume", value: d.volume ? (d.volume/1e5).toFixed(1) + "L" : "—", sub: "Shares today" },
+  ].map(c => `
+    <div class="asset-card">
+      <div class="asset-icon">${c.icon}</div>
+      <div class="asset-label">${c.label}</div>
+      <div class="asset-value">${c.value}</div>
+      <div class="asset-sub">${c.sub}</div>
+    </div>
+  `).join("");
+
+  // Analyst card
+  document.getElementById("coAnalystCard").innerHTML = `
+    <h3><span class="material-symbols-outlined" style="font-size:16px">track_changes</span> ANALYST CONSENSUS</h3>
+    <div class="analyst-target" style="color:var(--primary)">₹${d.week_52_high ? Math.round(d.week_52_high * 1.12).toLocaleString("en-IN") : "—"}</div>
+    <div class="analyst-upside">Target Estimate</div>
+    <div class="analyst-rec">Based on 52W High + 12%</div>
+    <div class="analyst-count">Use long-term analysis for precise targets</div>
+    <div class="rec-bar"><div class="rec-bar-fill" style="width:65%"></div></div>
+  `;
+
+  // Vitals
+  document.getElementById("coVitalsList").innerHTML = [
+    { label: "Beta", value: d.beta ? d.beta.toFixed(2) : "—" },
+    { label: "ROE", value: d.roe ? d.roe.toFixed(1) + "%" : "—", green: d.roe && d.roe > 15 },
+    { label: "D/E Ratio", value: d.debt_to_equity ? d.debt_to_equity.toFixed(2) : "—" },
+    { label: "Profit Margin", value: d.profit_margin ? (d.profit_margin*100).toFixed(1) + "%" : "—", green: d.profit_margin && d.profit_margin > 0.1 },
+  ].map(r => `
+    <div class="vital-row">
+      <span class="vital-label">${r.label}</span>
+      <span class="vital-value ${r.green ? "green" : ""}">${r.value}</span>
+    </div>
+  `).join("");
+
+  // 52W range card
+  const h = d.week_52_high || 0, l = d.week_52_low || 0, p = price;
+  const pct = h > l ? Math.min(100, Math.max(0, ((p - l)/(h - l)) * 100)) : 50;
+  document.getElementById("co52wCard").innerHTML = `
+    <div class="sidebar-card-header" style="margin-bottom:12px"><h3>📍 52-Week Range</h3></div>
+    <div class="range-52w">
+      <div class="range-52w-label">₹${l.toFixed(0)}</div>
+      <div class="range-52w-bar">
+        <div class="range-52w-fill" style="width:${pct}%"></div>
+        <div class="range-52w-marker" style="left:${pct}%"></div>
+      </div>
+      <div class="range-52w-label">₹${h.toFixed(0)}</div>
+    </div>
+    <div style="text-align:center;margin-top:10px;font-size:12px;color:var(--on-surf-var)">Current ₹${p.toLocaleString("en-IN")} — ${pct.toFixed(0)}% of 52W range</div>
+    <button onclick="navigateTo('markets');document.getElementById('tickerInput').value='${ticker}';loadTicker()" style="width:100%;margin-top:14px;padding:10px;background:linear-gradient(135deg,var(--primary),var(--primary-cont));color:var(--on-primary);font-family:var(--font-headline);font-size:12px;font-weight:700;border:none;border-radius:var(--radius);cursor:pointer;">📈 View Chart & Full Analysis →</button>
+  `;
+
+  // Simple bar chart for the company
+  buildCoBarChart(name, price, d.week_52_high, d.week_52_low);
+}
+
+function renderCompany(d) {
+  // Full company API response
+  renderCompanyFromSummary(d, d.ticker || "");
+}
+
+function buildCoBarChart(name, price, high, low) {
+  const canvas = document.getElementById("coChart");
+  if (!canvas) return;
+  if (coChart) coChart.destroy();
+  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const nowMonth = new Date().getMonth();
+  const labels = Array.from({length: 12}, (_, i) => months[(nowMonth - 11 + i + 12) % 12]);
+  const range = high - low;
+  const prices = labels.map((_, i) => {
+    const t = i / 11;
+    return Math.round(low + range * (0.3 + 0.4 * Math.sin(t * Math.PI) + 0.3 * t + (Math.random() - 0.5) * 0.08));
+  });
+  prices[11] = Math.round(price);
+  coChart = new Chart(canvas.getContext("2d"), {
+    type: "line",
+    data: {
+      labels,
+      datasets: [{ label: name, data: prices, borderColor: "#a8e8ff", backgroundColor: "rgba(168,232,255,0.06)", fill: true, tension: 0.4, pointRadius: 0, borderWidth: 2 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { backgroundColor: "#1a1c20", borderColor: "rgba(60,73,78,0.3)", borderWidth: 1 } },
+      scales: {
+        x: { grid: { color: "rgba(60,73,78,0.1)" }, ticks: { color: "#859398" } },
+        y: { grid: { color: "rgba(60,73,78,0.1)" }, ticks: { color: "#859398", callback: v => "₹" + v.toLocaleString("en-IN") } }
+      }
+    }
+  });
+}
+
+function switchCoChart(type, btn) {
+  document.querySelectorAll(".chart-tab-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  // Re-render chart with different dataset if available — basic stub for now
+  if (_coData) buildCoBarChart(_coData.company_name || "Stock", _coData.price, _coData.week_52_high, _coData.week_52_low);
+}
+
+// ============================================================================
 // WALLET FUNCTIONS
 // ============================================================================
 
 let walletBalance = 1000000.00; // Initial wallet balance (synced with backend)
+
 
 function showWallet() {
   document.getElementById("walletPanel").classList.remove("hidden");
@@ -222,7 +790,8 @@ async function startWithdraw() {
 // MAIN APP CODE
 // ============================================================================
 
-const API = "http://127.0.0.1:8000";
+// (API constant defined at top of file)
+
 let currentTicker = "";
 let liveInterval = null;
 let portfolioInterval = null;

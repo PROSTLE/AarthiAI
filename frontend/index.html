@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AarthiAI — Predictive Trading Terminal</title>
-  <meta name="description" content="AarthiAI — India's smartest stock prediction terminal powered by LSTM neural networks, real-time NSE/BSE data, and Gemini AI insights." />
+  <meta name="description" content="AarthiAI — India's smartest stock analysis terminal powered by LSTM neural networks, real-time NSE/BSE data, long-term scoring, SIP calculations, and Gemini AI insights." />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
   <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
@@ -16,21 +16,37 @@
 <!-- ═══════ TOP NAV ═══════ -->
 <nav class="topnav" id="topnav">
   <div class="topnav-left">
-    <span class="brand-logo"><span class="brand-aarthi">Aarthi</span><span class="brand-ai">AI</span></span>
+    <span class="brand-logo" onclick="navigateTo('markets')" style="cursor:pointer">
+      <span class="brand-aarthi">Aarthi</span><span class="brand-ai">AI</span>
+    </span>
     <div class="topnav-links">
-      <a class="tnav-link active" href="#" onclick="switchMainView('charts')">Markets</a>
-      <a class="tnav-link" href="mutual-funds.html">Funds</a>
-      <a class="tnav-link" href="sip.html">SIP</a>
-      <a class="tnav-link" href="company.html">Companies</a>
+      <a class="tnav-link active" id="nav-markets" href="#" onclick="navigateTo('markets');return false">Markets</a>
+      <a class="tnav-link" id="nav-funds"   href="#" onclick="navigateTo('funds');return false">Funds</a>
+      <a class="tnav-link" id="nav-sip"     href="#" onclick="navigateTo('sip');return false">SIP</a>
+      <a class="tnav-link" id="nav-company" href="#" onclick="navigateTo('company');return false">Companies</a>
+      <a class="tnav-link" id="nav-orders"  href="#" onclick="navigateTo('orders');return false">Orders</a>
     </div>
   </div>
   <div class="topnav-center">
-    <div class="topnav-search-wrap">
+    <!-- Markets search (shown on markets view) -->
+    <div class="topnav-search-wrap" id="marketsSearch">
       <span class="material-symbols-outlined topnav-search-icon">search</span>
       <input id="tickerInput" type="text" class="topnav-search-input" placeholder="Search RELIANCE, TCS, NIFTY..." spellcheck="false" autocomplete="off" />
       <div class="search-dropdown hidden" id="searchDropdown"></div>
     </div>
     <button id="analyzeBtn" class="analyze-btn" onclick="loadTicker()">Analyze</button>
+    <!-- Funds search (shown on funds view) -->
+    <div class="topnav-search-wrap hidden" id="fundsSearch">
+      <span class="material-symbols-outlined topnav-search-icon">search</span>
+      <input id="mfSearch" type="text" class="topnav-search-input" placeholder="Search funds, AMC…" autocomplete="off" />
+    </div>
+    <!-- Company search (shown on company view) -->
+    <div class="topnav-search-wrap hidden" id="companySearch">
+      <span class="material-symbols-outlined topnav-search-icon">search</span>
+      <input id="companySearchInput" type="text" class="topnav-search-input" placeholder="Search RELIANCE, TCS, HDFC..." autocomplete="off" oninput="handleCompanySearchInput()" onkeydown="if(event.key==='Enter') loadCompany()" />
+      <div class="search-dropdown hidden" id="companySuggestions"></div>
+    </div>
+    <button class="analyze-btn hidden" id="companyAnalyzeBtn" onclick="loadCompany()">Analyze</button>
   </div>
   <div class="topnav-right">
     <div class="live-badge" id="liveBadge" title="Indian market hours: 9:15 AM – 3:30 PM IST">
@@ -58,23 +74,20 @@
   </div>
 
   <nav class="sidenav-links">
-    <a class="sidenav-link active" href="#" onclick="switchMainView('charts')">
+    <a class="sidenav-link active" id="snav-markets" href="#" onclick="navigateTo('markets');return false">
       <span class="material-symbols-outlined">grid_view</span> Dashboard
     </a>
-    <a class="sidenav-link" href="mutual-funds.html">
+    <a class="sidenav-link" id="snav-funds" href="#" onclick="navigateTo('funds');return false">
       <span class="material-symbols-outlined">account_balance</span> Mutual Funds
     </a>
-    <a class="sidenav-link" href="sip.html">
+    <a class="sidenav-link" id="snav-sip" href="#" onclick="navigateTo('sip');return false">
       <span class="material-symbols-outlined">calculate</span> SIP Calculator
     </a>
-    <a class="sidenav-link" href="company.html">
+    <a class="sidenav-link" id="snav-company" href="#" onclick="navigateTo('company');return false">
       <span class="material-symbols-outlined">analytics</span> Company Analysis
     </a>
-    <a class="sidenav-link" href="#" onclick="switchMainView('trading')">
+    <a class="sidenav-link" id="snav-orders" href="#" onclick="navigateTo('orders');return false">
       <span class="material-symbols-outlined">swap_vert</span> Orders
-    </a>
-    <a class="sidenav-link" href="#" onclick="switchMainView('trading')">
-      <span class="material-symbols-outlined">history</span> History
     </a>
   </nav>
 
@@ -115,10 +128,18 @@
       <span class="mkt-price" id="mktSensexPrice">—</span>
       <span class="mkt-change" id="mktSensexChange">—</span>
     </div>
+    <div class="mkt-sep">│</div>
+    <div class="mkt-item">
+      <span class="mkt-label">India VIX</span>
+      <span class="mkt-price" id="mktVixPrice">—</span>
+      <span class="mkt-change" id="mktVixChange">Volatility</span>
+    </div>
   </div>
 
-  <!-- ═══════ CHARTS VIEW ═══════ -->
-  <div id="chartsView" class="view-content">
+  <!-- ════════════════════════════════
+       VIEW: MARKETS (Dashboard)
+  ════════════════════════════════ -->
+  <div id="view-markets" class="view-content spa-view">
 
     <!-- Stock Header -->
     <header class="stock-header hidden" id="priceBanner">
@@ -182,9 +203,9 @@
             <div class="chart-empty-state" id="chartEmptyState">
               <div class="empty-icon">📈</div>
               <h3>Explore Any Stock</h3>
-              <p>Search for a stock above or pick one from <strong>High Potential Stocks</strong> to view charts, analysis & AI insights.</p>
+              <p>Search for a stock above or pick one from <strong>High Potential Stocks</strong> to view charts, analysis &amp; AI insights.</p>
               <div class="empty-hints">
-                Try: <span onclick="document.getElementById('tickerInput').focus()">RELIANCE.NS</span> · <span onclick="document.getElementById('tickerInput').focus()">TCS.NS</span> · <span onclick="document.getElementById('tickerInput').focus()">TATAMOTORS.NS</span>
+                Try: <span onclick="loadTickerDirect('RELIANCE.NS')">RELIANCE</span> · <span onclick="loadTickerDirect('TCS.NS')">TCS</span> · <span onclick="loadTickerDirect('TATAMOTORS.NS')">TATAMOTORS</span>
               </div>
             </div>
           </div>
@@ -194,7 +215,7 @@
           </div>
         </div>
 
-        <!-- Prediction Section -->
+        <!-- 5-Day Prediction Section -->
         <div class="kinetic-card prediction-card hidden" id="predSection">
           <div class="pred-card-header">
             <h3>🤖 Next 5-Day Price Forecast</h3>
@@ -240,7 +261,6 @@
 
         <!-- Long-Term Analysis Panel -->
         <div class="kinetic-card lt-panel hidden" id="ltPanel">
-          <!-- Loading state -->
           <div id="ltLoader" class="lt-loader">
             <div class="neural-dots"><span></span><span></span><span></span><span></span><span></span></div>
             <div class="loader-brain">🧠</div>
@@ -248,11 +268,7 @@
             <p class="loader-sub">Evaluating fundamentals, technicals, sentiment, ownership &amp; growth pipeline...</p>
             <div class="loader-bar"><div class="loader-bar-fill"></div></div>
           </div>
-
-          <!-- Results -->
           <div id="ltResults" class="lt-results hidden">
-
-            <!-- Score header -->
             <div class="lt-header">
               <div class="lt-score-ring">
                 <svg viewBox="0 0 80 80" class="lt-ring-svg">
@@ -272,31 +288,20 @@
                 <div class="lt-pos-size" id="ltPosSize">—</div>
               </div>
             </div>
-
-            <!-- Key Insight -->  
             <div class="lt-insight-row">
               <div class="lt-insight-chip green" id="ltStrongest"></div>
               <div class="lt-insight-chip red" id="ltWeakest"></div>
             </div>
-
-            <!-- Hard rejects warning -->
             <div id="ltRejectsWrap" class="lt-rejects hidden">
               <div class="lt-rejects-title">🚫 Hard Filter Flags</div>
               <div id="ltRejectsList"></div>
             </div>
-
-            <!-- 5 Pillar Bars -->
             <div class="lt-pillars" id="ltPillars"></div>
-
-            <!-- Exit triggers -->
             <div class="lt-exit-triggers">
               <div class="lt-exit-title">⚡ Fundamental Exit Triggers</div>
               <div id="ltExitList" class="lt-exit-list"></div>
             </div>
-
-            <!-- Rebalance note -->
             <div class="lt-rebalance" id="ltRebalance"></div>
-
           </div>
         </div>
 
@@ -374,10 +379,235 @@
       </div>
     </section>
 
-  </div><!-- /chartsView -->
+  </div><!-- /view-markets -->
 
-  <!-- ═══════ TRADING / PORTFOLIO VIEW ═══════ -->
-  <div id="tradingView" class="view-content hidden">
+  <!-- ════════════════════════════════
+       VIEW: MUTUAL FUNDS
+  ════════════════════════════════ -->
+  <div id="view-funds" class="view-content spa-view hidden">
+    <div class="mf-header">
+      <h1>📊 Mutual Funds Explorer</h1>
+      <p>Discover high-precision AI-ranked Indian mutual funds across all categories</p>
+    </div>
+
+    <div class="cat-filters">
+      <button class="cat-btn active" data-cat="all" onclick="filterFunds('all', this)">All Funds</button>
+      <button class="cat-btn" data-cat="Equity" onclick="filterFunds('Equity', this)">Equity</button>
+      <button class="cat-btn" data-cat="Debt" onclick="filterFunds('Debt', this)">Debt</button>
+      <button class="cat-btn" data-cat="Hybrid" onclick="filterFunds('Hybrid', this)">Hybrid</button>
+      <button class="cat-btn" data-cat="Index" onclick="filterFunds('Index', this)">Index Funds</button>
+    </div>
+
+    <div class="mf-grid">
+      <!-- Left: Fund List -->
+      <div>
+        <div class="scatter-card">
+          <h3>Risk–Reward Analysis</h3>
+          <p>3-Year Annualized Return vs. Expense Ratio (bubble size = AUM)</p>
+          <div class="scatter-chart-wrap"><canvas id="scatterChart"></canvas></div>
+        </div>
+
+        <div class="fund-list" id="fundList">
+          <div class="mf-loading">Loading funds...</div>
+        </div>
+
+        <div class="amc-table-section">
+          <h2>🏛️ Fund House Comparison</h2>
+          <div class="amc-table-wrap">
+            <table class="amc-table">
+              <thead>
+                <tr>
+                  <th>AMC Name</th><th>Avg 3Y Return</th><th>Avg Expense Ratio</th>
+                  <th>Risk Profile</th><th>Predictive Confidence</th>
+                </tr>
+              </thead>
+              <tbody id="amcTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Sidebar -->
+      <div class="mf-sidebar">
+        <div class="ai-signal-card">
+          <div class="ai-signal-bg">🧠</div>
+          <div class="ai-signal-title">🤖 AI Predictive Signal</div>
+          <div class="ai-signal-text" id="aiSignalText">Loading AI signal...</div>
+          <div class="ai-signal-link" onclick="navigateTo('company')">View Company Analysis <span class="material-symbols-outlined" style="font-size:12px">arrow_forward</span></div>
+        </div>
+
+        <div class="mfsb-card">
+          <div class="mfsb-title">🔥 Top Alpha Generators</div>
+          <div id="topAlphaList"><div class="mf-loading">Loading...</div></div>
+        </div>
+
+        <div class="mfsb-card">
+          <div class="mfsb-title">🛡️ Best Stability Score</div>
+          <div id="topStableList"><div class="mf-loading">Loading...</div></div>
+        </div>
+
+        <div class="kinetic-card" style="padding:18px; text-align:center;">
+          <div style="font-size:28px; margin-bottom:10px;">💰</div>
+          <h4 style="font-family:var(--font-headline); font-size:15px; font-weight:700; margin-bottom:8px;">Plan a SIP</h4>
+          <p style="font-size:12px; color:var(--on-surf-var); margin-bottom:14px;">Use our AI-powered SIP calculator to grow your wealth systematically.</p>
+          <button onclick="navigateTo('sip')" style="display:block;width:100%;padding:10px;background:linear-gradient(135deg,var(--secondary),var(--sec-cont));color:var(--on-secondary);font-family:var(--font-headline);font-size:13px;font-weight:700;border-radius:var(--radius);border:none;cursor:pointer;">Start SIP Calculator →</button>
+        </div>
+      </div>
+    </div>
+  </div><!-- /view-funds -->
+
+  <!-- ════════════════════════════════
+       VIEW: SIP CALCULATOR
+  ════════════════════════════════ -->
+  <div id="view-sip" class="view-content spa-view hidden">
+    <div class="sip-header">
+      <h1>💰 SIP Calculator</h1>
+      <p>Plan your Systematic Investment Plan with AI-powered projections and scenario analysis</p>
+    </div>
+
+    <div class="sip-layout">
+      <!-- Form -->
+      <div class="sip-form-panel">
+        <h3>📐 Configure SIP</h3>
+
+        <div class="form-group">
+          <div class="form-label">Monthly SIP Amount <span class="form-value" id="sipAmtDisplay">₹5,000</span></div>
+          <input type="range" id="sipAmtSlider" min="500" max="100000" step="500" value="5000" oninput="syncSipInput('sipAmt', this.value)" />
+          <div class="range-labels"><span>₹500</span><span>₹1L</span></div>
+          <input type="number" id="sipAmt" class="form-input" style="margin-top:10px" value="5000" min="500" max="100000" step="500" oninput="syncSipSlider('sipAmtSlider', this.value); updateSipDisplay('sipAmtDisplay','₹'+Number(this.value).toLocaleString('en-IN'))" />
+        </div>
+
+        <div class="form-group">
+          <div class="form-label">Investment Duration <span class="form-value" id="sipYrsDisplay">10 Years</span></div>
+          <input type="range" id="sipYrsSlider" min="1" max="40" step="1" value="10" oninput="syncSipInput('sipYrs', this.value)" />
+          <div class="range-labels"><span>1Y</span><span>40Y</span></div>
+          <input type="number" id="sipYrs" class="form-input" style="margin-top:10px" value="10" min="1" max="40" oninput="syncSipSlider('sipYrsSlider', this.value); updateSipDisplay('sipYrsDisplay', this.value+' Years')" />
+        </div>
+
+        <div class="form-group">
+          <div class="form-label">Expected Annual Return <span class="form-value" id="sipRetDisplay">12%</span></div>
+          <input type="range" id="sipRetSlider" min="4" max="30" step="0.5" value="12" oninput="syncSipInput('sipRet', this.value)" />
+          <div class="range-labels"><span>4%</span><span>30%</span></div>
+          <input type="number" id="sipRet" class="form-input" style="margin-top:10px" value="12" min="4" max="30" step="0.5" oninput="syncSipSlider('sipRetSlider', this.value); updateSipDisplay('sipRetDisplay', this.value+'%')" />
+        </div>
+
+        <div class="step-up-toggle">
+          <label class="toggle-switch">
+            <input type="checkbox" id="stepUpToggle" onchange="toggleStepUp()" />
+            <span class="toggle-slider"></span>
+          </label>
+          <span class="toggle-label">Enable Annual Step-Up SIP</span>
+        </div>
+
+        <div class="form-group hidden" id="stepUpGroup">
+          <div class="form-label">Annual Step-Up % <span class="form-value" id="stepUpDisplay">10%</span></div>
+          <input type="range" id="stepUpSlider" min="0" max="50" step="1" value="10" oninput="syncSipInput('stepUp', this.value)" />
+          <div class="range-labels"><span>0%</span><span>50%</span></div>
+          <input type="number" id="stepUp" class="form-input" style="margin-top:10px" value="10" min="0" max="50" oninput="syncSipSlider('stepUpSlider', this.value); updateSipDisplay('stepUpDisplay', this.value+'%')" />
+        </div>
+
+        <div class="form-group">
+          <div class="form-label">Fund Category</div>
+          <select id="fundCat" class="form-input" onchange="applySipPreset(this.value)">
+            <option value="">Custom</option>
+            <option value="8">Debt Funds (~8%)</option>
+            <option value="12" selected>Diversified Equity (~12%)</option>
+            <option value="14">Mid Cap Equity (~14%)</option>
+            <option value="16">Small Cap / Thematic (~16%)</option>
+            <option value="20">Aggressive (Historical Max ~20%)</option>
+          </select>
+        </div>
+
+        <button class="calc-btn" onclick="calculateSIP()">⚡ Calculate SIP Returns</button>
+      </div>
+
+      <!-- Results -->
+      <div class="sip-results" id="sipResults">
+        <div class="empty-results">
+          <div class="icon">📈</div>
+          <h3>Configure &amp; Calculate</h3>
+          <p>Set your SIP amount, duration, and expected return, then click <strong>Calculate</strong> to see your wealth projection.</p>
+        </div>
+      </div>
+    </div>
+  </div><!-- /view-sip -->
+
+  <!-- ════════════════════════════════
+       VIEW: COMPANY INTELLIGENCE
+  ════════════════════════════════ -->
+  <div id="view-company" class="view-content spa-view hidden">
+    <div class="company-header">
+      <h1>🔬 Company Intelligence</h1>
+      <p>Deep-dive financial analysis, ratios, and AI-powered insights for any NSE/BSE listed company</p>
+    </div>
+
+    <!-- Empty State -->
+    <div id="coEmpty">
+      <div class="co-empty">
+        <div class="icon">🏢</div>
+        <h3>Search Any Listed Company</h3>
+        <p>Enter a stock ticker or company name in the search bar above to load comprehensive financial intelligence.</p>
+        <div class="co-empty-chips">
+          <div class="chip" onclick="loadCompanyDirect('RELIANCE.NS')">RELIANCE</div>
+          <div class="chip" onclick="loadCompanyDirect('TCS.NS')">TCS</div>
+          <div class="chip" onclick="loadCompanyDirect('INFY.NS')">INFOSYS</div>
+          <div class="chip" onclick="loadCompanyDirect('HDFCBANK.NS')">HDFC BANK</div>
+          <div class="chip" onclick="loadCompanyDirect('TATAMOTORS.NS')">TATA MOTORS</div>
+          <div class="chip" onclick="loadCompanyDirect('ICICIBANK.NS')">ICICI BANK</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loading -->
+    <div id="coLoading" style="display:none">
+      <div class="co-loading">
+        <span class="material-symbols-outlined">autorenew</span>
+        <p>Loading company intelligence...</p>
+      </div>
+    </div>
+
+    <!-- Company Content -->
+    <div id="companyContent" class="company-content">
+      <div class="co-header-bar" id="coHeaderBar"></div>
+      <div class="company-bento">
+        <div class="bento-span-8">
+          <div class="asset-grid" id="coAssetGrid"></div>
+        </div>
+        <div class="bento-span-4">
+          <div class="analyst-card" id="coAnalystCard">
+            <h3><span class="material-symbols-outlined" style="font-size:16px">track_changes</span> ANALYST CONSENSUS</h3>
+            <div style="color:var(--outline);font-size:13px">Search a company to load...</div>
+          </div>
+        </div>
+        <div class="bento-span-8">
+          <div class="co-chart-card">
+            <div class="co-chart-header">
+              <h3 id="coChartTitle">Revenue &amp; Profit History</h3>
+              <div class="chart-tab-btns">
+                <button class="chart-tab-btn active" onclick="switchCoChart('revenue', this)">Revenue</button>
+                <button class="chart-tab-btn" onclick="switchCoChart('profit', this)">Profit</button>
+              </div>
+            </div>
+            <div class="co-chart-wrap"><canvas id="coChart"></canvas></div>
+          </div>
+        </div>
+        <div class="bento-span-4">
+          <div class="vitals-card" id="coVitalsCard">
+            <h3>FINANCIAL VITALS</h3>
+            <div id="coVitalsList" style="color:var(--outline);font-size:13px">Search a company to load...</div>
+          </div>
+        </div>
+        <div class="bento-span-4">
+          <div class="kinetic-card" style="padding:20px" id="co52wCard"></div>
+        </div>
+      </div>
+    </div>
+  </div><!-- /view-company -->
+
+  <!-- ════════════════════════════════
+       VIEW: ORDERS / PORTFOLIO
+  ════════════════════════════════ -->
+  <div id="view-orders" class="view-content spa-view hidden">
     <div class="trading-grid">
 
       <!-- Account Value Chart -->
@@ -397,8 +627,8 @@
         <div class="portfolio-chips">
           <div class="port-chip"><span class="pc-lbl">Portfolio Value</span><span class="pc-val" id="portValue">₹10,00,000.00</span></div>
           <div class="port-chip"><span class="pc-lbl">Cash Balance</span><span class="pc-val" id="portBalance">₹10,00,000.00</span></div>
-          <div class="port-chip"><span class="pc-lbl">Unrealized P&L</span><span class="pc-val" id="portUnrealized">₹0.00</span></div>
-          <div class="port-chip"><span class="pc-lbl">Realized P&L</span><span class="pc-val" id="portRealized">₹0.00</span></div>
+          <div class="port-chip"><span class="pc-lbl">Unrealized P&amp;L</span><span class="pc-val" id="portUnrealized">₹0.00</span></div>
+          <div class="port-chip"><span class="pc-lbl">Realized P&amp;L</span><span class="pc-val" id="portRealized">₹0.00</span></div>
           <div class="port-chip"><span class="pc-lbl">Win Rate</span><span class="pc-val" id="portWinRate">0%</span></div>
           <div class="port-chip"><span class="pc-lbl">Total Trades</span><span class="pc-val" id="portTrades">0</span></div>
         </div>
@@ -423,7 +653,7 @@
         <div class="positions-table-wrap">
           <table class="positions-table">
             <thead>
-              <tr><th>Ticker</th><th>Shares</th><th>Buy Price</th><th>Current</th><th>P&L</th><th>P&L %</th><th>Stop Loss</th><th>Take Profit</th><th>Action</th></tr>
+              <tr><th>Ticker</th><th>Shares</th><th>Buy Price</th><th>Current</th><th>P&amp;L</th><th>P&amp;L %</th><th>Stop Loss</th><th>Take Profit</th><th>Action</th></tr>
             </thead>
             <tbody id="positionsBody">
               <tr><td colspan="9" class="empty-msg">No open positions</td></tr>
@@ -445,10 +675,9 @@
       </div>
 
     </div>
-  </div><!-- /tradingView -->
+  </div><!-- /view-orders -->
 
 </div><!-- /main-wrap -->
-
 
 <!-- ═══════ WALLET PANEL ═══════ -->
 <div id="walletPanel" class="panel-overlay hidden">
@@ -456,19 +685,16 @@
     <button class="panel-close" onclick="closeWallet()">
       <span class="material-symbols-outlined">close</span>
     </button>
-
     <div class="panel-header">
       <div class="panel-header-icon">💰</div>
       <h2>My Wallet</h2>
       <p>Synced with AutoBot Balance</p>
     </div>
-
     <div class="wallet-balance-card">
       <div class="wbc-label">Available Balance</div>
       <div class="wbc-amount" id="walletBalance">₹10,00,000.00</div>
       <div class="wbc-bar"></div>
     </div>
-
     <div class="wallet-quick-add">
       <span class="wqa-label">Quick Add</span>
       <div class="wqa-btns">
@@ -478,15 +704,12 @@
         <button onclick="quickAdd(10000)">₹10,000</button>
       </div>
     </div>
-
     <div class="wallet-actions">
       <button class="wallet-action-btn add" onclick="showAddMoney()"><span>＋</span> Add Money</button>
       <button class="wallet-action-btn withdraw" onclick="showWithdrawMoney()"><span>↗</span> Withdraw</button>
     </div>
-
     <div id="walletActionArea"></div>
     <div id="walletMessage" class="wallet-message hidden"></div>
-
     <div class="wallet-txn-section">
       <h4>Recent Transactions</h4>
       <div id="walletTxnList" class="wallet-txn-list">
@@ -502,21 +725,17 @@
     <button class="panel-close" onclick="closeTradePanel()">
       <span class="material-symbols-outlined">close</span>
     </button>
-
     <div class="trade-panel-tabs">
       <button class="tp-tab active" onclick="switchTradeTab('search')" data-tab="search">🔍 Trade</button>
       <button class="tp-tab" onclick="switchTradeTab('holdings')" data-tab="holdings">📂 Holdings</button>
       <button class="tp-tab" onclick="switchTradeTab('history')" data-tab="history">📋 History</button>
       <button class="tp-tab" onclick="switchTradeTab('watchlist')" data-tab="watchlist">⭐ Watchlist</button>
     </div>
-
-    <!-- Search Tab -->
     <div class="tp-tab-content" id="tpSearchTab">
       <div class="tp-search-wrap">
         <input type="text" id="tradeSearchInput" placeholder="Search stock… (e.g. Reliance, TCS, INFY)" spellcheck="false" autocomplete="off" />
         <div class="tp-search-dropdown hidden" id="tradeSearchDropdown"></div>
       </div>
-
       <div class="tp-stock-card hidden" id="tpStockCard">
         <div class="tp-stock-header">
           <div>
@@ -551,18 +770,12 @@
         <button class="tp-watchlist-btn" id="tpWatchlistBtn" onclick="toggleWatchlistFromPanel()">⭐ Add to Watchlist</button>
       </div>
     </div>
-
-    <!-- Holdings Tab -->
     <div class="tp-tab-content hidden" id="tpHoldingsTab">
       <div id="tpHoldingsList" class="tp-holdings-list"><div class="tp-empty">No holdings yet</div></div>
     </div>
-
-    <!-- History Tab -->
     <div class="tp-tab-content hidden" id="tpHistoryTab">
       <div id="tpHistoryList" class="tp-history-list"><div class="tp-empty">No trade history</div></div>
     </div>
-
-    <!-- Watchlist Tab -->
     <div class="tp-tab-content hidden" id="tpWatchlistTab">
       <div id="tpWatchlistList" class="tp-watchlist-list"><div class="tp-empty">Your watchlist is empty. Add stocks from the Trade tab.</div></div>
     </div>
@@ -574,7 +787,7 @@
   <div class="footer-content">
     <div class="footer-brand">
       <span class="footer-logo"><span class="brand-aarthi">Aarthi</span><span class="brand-ai">AI</span></span>
-        <span class="footer-tagline">Where Machine Learning Meets Market Intelligence</span>
+      <span class="footer-tagline">Where Machine Learning Meets Market Intelligence</span>
     </div>
     <div class="footer-tech">
       <span>Built with</span>
@@ -587,6 +800,6 @@
   </div>
 </footer>
 
-<script src="app.js?v=7"></script>
+<script src="app.js?v=8"></script>
 </body>
 </html>
