@@ -2,7 +2,7 @@
 from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
-from stock_data import fetch_stock_data, add_technical_indicators, get_stock_info, fetch_live_price, fetch_chart_data, fetch_india_vix
+from stock_data import fetch_stock_data, add_technical_indicators, get_stock_info, fetch_live_price, fetch_chart_data, fetch_india_vix, fetch_tcs_macro_context
 from sentiment import analyze_sentiment
 from model import train_and_predict
 from technical_signals import score_technical_signals
@@ -21,10 +21,11 @@ from trader import (
     add_to_balance, withdraw_from_balance, get_wallet_transactions,
     get_value_history,
 )
+from backtest_weights import run_signal_health_check, get_tcs_macro_score, derive_weights, load_cached_weights
 import concurrent.futures
 import datetime
 
-app = FastAPI(title="StockSense AI", version="3.0.0")
+app = FastAPI(title="StockSense AI", version="3.1.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -36,7 +37,42 @@ app.add_middleware(
 
 @app.get("/")
 def root():
-    return {"message": "StockSense AI API v3.0 is running 🚀"}
+    return {"message": "StockSense AI API v3.1 is running 🚀 — Anti-gravity edition"}
+
+
+@app.get("/api/health")
+def health_check():
+    """
+    Anti-entropy maintenance endpoint.
+    Run on every cold start or scheduled health monitor.
+    Returns liveness of all signal sources: LLM, macro data, weight cache.
+    """
+    try:
+        return {"status": "ok", **run_signal_health_check()}
+    except Exception as e:
+        return {"status": "error", "detail": str(e)}
+
+
+@app.get("/api/macro/{ticker}")
+def macro_context(ticker: str):
+    """
+    Fetch TCS-specific macro signals: USD/INR + CNXIT sector alpha.
+    Orthogonal to all price-based signals. Only meaningful for IT exporters.
+    """
+    try:
+        macro = fetch_tcs_macro_context()
+        score = get_tcs_macro_score(ticker, macro)
+        return {
+            "ticker": ticker,
+            "usd_inr": macro.get("usd_inr"),
+            "usd_5d_return_pct": macro.get("usd_5d_return"),
+            "cnxit_5d_alpha_pct": macro.get("cnxit_5d_return"),
+            "macro_directional_score": score,
+            "available": macro.get("available", False),
+            "interpretation": "bullish" if score > 0.1 else ("bearish" if score < -0.1 else "neutral"),
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @app.get("/api/stock/{ticker}")
@@ -161,6 +197,7 @@ def predict(ticker: str):
             sentiment_score=sentiment_score,
             technical_score=technical_score,
             llm_score=llm_score,
+            llm_confidence=float(llm.get("confidence", 1.0)),
             sentiment_label=sentiment_label,
             technical_direction=technical_direction,
             llm_direction=llm_direction,
@@ -235,6 +272,7 @@ def summary(ticker: str):
             sentiment_score=sentiment_score,
             technical_score=technical_score,
             llm_score=llm_score,
+            llm_confidence=float(llm.get("confidence", 1.0)),
             sentiment_label=sentiment_label,
             technical_direction=technical_direction,
             llm_direction=llm_direction,
@@ -709,13 +747,20 @@ def portfolio_value_history():
 # ── Long-Term Analysis (5-Pillar Scoring Engine) ──────────────────────────────
 
 @app.get("/api/long-term/{ticker}")
-def long_term_analysis(ticker: str):
+def long_term_analysis(ticker: str, _t: str = ""):
     """
     Run the 5-pillar long-term scoring engine for any NSE/BSE stock.
     Returns composite score, pillar breakdown, verdict, position sizing.
+    Pass ?_t=<timestamp> to bypass the in-memory 2-hour cache.
     """
     try:
-        # Fetch all inputs in parallel
+        from long_term_analysis import _LT_CACHE
+
+        # Cache-bust: remove stale cached entry when _t param is provided
+        if _t and ticker in _LT_CACHE:
+            del _LT_CACHE[ticker]
+
+        # Fetch all inputs
         df = fetch_stock_data(ticker)
         df = add_technical_indicators(df)
         info = get_stock_info(ticker)
@@ -739,6 +784,33 @@ def long_term_analysis(ticker: str):
             df_latest=df_latest_dict,
             sentiment_result=sent,
         )
+
+        # ── Embed price history so the frontend chart needs no extra API call ──
+        # df already has 1y of daily OHLCV — grab last 90 days
+        hist_df = df.tail(90).copy()
+        hist_prices = [round(float(p), 2) for p in hist_df["Close"].tolist()]
+        # yfinance may name the date column "Date" or "Datetime" depending on version/interval
+        date_col = "Date" if "Date" in hist_df.columns else ("Datetime" if "Datetime" in hist_df.columns else None)
+        if date_col:
+            def _fmt_date(d2):
+                # Strip timezone info if present before calling .date()
+                if hasattr(d2, "tz_localize"):
+                    try: d2 = d2.tz_localize(None)
+                    except Exception: pass
+                if hasattr(d2, "tzinfo") and d2.tzinfo is not None:
+                    try: d2 = d2.replace(tzinfo=None)
+                    except Exception: pass
+                return str(d2.date()) if hasattr(d2, "date") else str(d2)[:10]
+            hist_dates = [_fmt_date(d2) for d2 in hist_df[date_col].tolist()]
+        else:
+            from datetime import datetime, timedelta
+            today = datetime.now()
+            hist_dates = [(today - timedelta(days=len(hist_prices)-1-i)).strftime("%Y-%m-%d")
+                          for i in range(len(hist_prices))]
+        result["hist_prices"] = hist_prices
+        result["hist_dates"]  = hist_dates
+        result["current_price"] = hist_prices[-1] if hist_prices else 0
+
         return result
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))

@@ -189,7 +189,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
 const API = "http://127.0.0.1:8001";
 
-const VIEWS = ["markets", "funds", "sip", "company", "orders"];
+const VIEWS = ["markets", "funds", "sip", "company", "orders", "tradebot"];
 
 function navigateTo(view) {
   // Hide all views
@@ -232,6 +232,9 @@ function navigateTo(view) {
   } else if (view === "orders") {
     // orders view uses existing trading view logic — init account chart
     if (window.initAccountChart) initAccountChart();
+  } else if (view === "tradebot") {
+    // TradeBot view — initialise on first visit
+    if (window.tbInit) tbInit();
   }
 
   // Push state for back button support
@@ -367,28 +370,88 @@ function renderScatterChart(funds) {
   if (!canvas) return;
   const ctx = canvas.getContext("2d");
   if (scatterChart) scatterChart.destroy();
+
+  // Sort by 1Y return and take top 8 for best comparison
+  const sorted = [...funds].sort((a, b) => b.return_1y - a.return_1y).slice(0, 8);
+  const labels = sorted.map(f => f.name.length > 22 ? f.name.slice(0, 20) + "…" : f.name);
+
+  const bgPlugin = {
+    id: "customBg",
+    beforeDraw(chart) {
+      const { ctx: c, chartArea } = chart;
+      if (!chartArea) return;
+      c.save();
+      c.clearRect(chartArea.left, chartArea.top, chartArea.right - chartArea.left, chartArea.bottom - chartArea.top);
+      c.restore();
+    }
+  };
+
   scatterChart = new Chart(ctx, {
-    type: "scatter",
+    type: "bar",
+    plugins: [bgPlugin],
     data: {
-      datasets: [{
-        label: "Funds",
-        data: funds.map(f => ({ x: f.expense_ratio, y: f.return_3y, label: f.name })),
-        backgroundColor: funds.map(f => f.return_3y > 25 ? "rgba(64,229,108,0.7)" : f.return_3y > 15 ? "rgba(168,232,255,0.7)" : "rgba(133,147,152,0.5)"),
-        borderColor: "transparent",
-        pointRadius: funds.map(f => Math.max(6, Math.min(18, f.aum_cr / 5000))),
-        pointHoverRadius: funds.map(f => Math.max(8, Math.min(22, f.aum_cr / 5000))),
-      }]
+      labels,
+      datasets: [
+        {
+          label: "1Y Return",
+          data: sorted.map(f => f.return_1y),
+          backgroundColor: "rgba(52, 211, 153, 0.82)",
+          borderColor: "rgba(52, 211, 153, 1)",
+          borderWidth: 1.5,
+          borderRadius: 4,
+        },
+        {
+          label: "3Y Return",
+          data: sorted.map(f => f.return_3y),
+          backgroundColor: "rgba(96, 165, 250, 0.75)",
+          borderColor: "rgba(96, 165, 250, 1)",
+          borderWidth: 1.5,
+          borderRadius: 4,
+        },
+        {
+          label: "5Y Return",
+          data: sorted.map(f => f.return_5y),
+          backgroundColor: "rgba(167, 139, 250, 0.7)",
+          borderColor: "rgba(167, 139, 250, 1)",
+          borderWidth: 1.5,
+          borderRadius: 4,
+        },
+      ]
     },
     options: {
-      responsive: true, maintainAspectRatio: false,
+      indexAxis: "y",        // horizontal bars = fund names on Y axis
+      responsive: true,
+      maintainAspectRatio: false,
       plugins: {
-        legend: { display: false },
-        tooltip: { backgroundColor: "#1a1c20", borderColor: "rgba(60,73,78,0.3)", borderWidth: 1,
-          callbacks: { label: c => [`${c.raw.label}`, `Expense: ${c.raw.x}%`, `3Y Return: +${c.raw.y}%`] } }
+        legend: {
+          display: true,
+          position: "top",
+          labels: { color: "#334155", font: { size: 11 }, boxWidth: 12, padding: 16 }
+        },
+        tooltip: {
+          backgroundColor: "rgba(255,255,255,0.96)",
+          borderColor: "rgba(0,0,0,0.12)",
+          borderWidth: 1,
+          titleColor: "#1a1a2a",
+          bodyColor: "#555",
+          padding: 12,
+          callbacks: {
+            label: c => `${c.dataset.label}: +${c.raw.toFixed(1)}%`
+          }
+        }
       },
       scales: {
-        x: { title: { display: true, text: "Expense Ratio (%)", color: "#859398", font: { size: 10 } }, grid: { color: "rgba(60,73,78,0.1)" }, ticks: { color: "#859398" } },
-        y: { title: { display: true, text: "3Y Annualized Return (%)", color: "#859398", font: { size: 10 } }, grid: { color: "rgba(60,73,78,0.1)" }, ticks: { color: "#859398" } }
+        x: {
+          title: { display: true, text: "Annualized Return (%)", color: "#475569", font: { size: 11 } },
+          grid: { color: "rgba(0,0,0,0.06)" },
+          ticks: { color: "#475569", font: { size: 10 }, callback: v => v + "%" },
+          border: { color: "rgba(0,0,0,0.1)" }
+        },
+        y: {
+          grid: { display: false },
+          ticks: { color: "#334155", font: { size: 10 } },
+          border: { color: "rgba(0,0,0,0.1)" }
+        }
       }
     }
   });
@@ -1322,19 +1385,28 @@ let _ltLoaded = null;  // ticker last loaded
 async function loadLongTerm(ticker) {
   if (!ticker) return;
 
+  // Always reload when ticker changes
+  if (_ltLoaded === ticker) {
+    // Already loaded for this ticker — just show results
+    document.getElementById("ltLoader").style.display = "none";
+    document.getElementById("ltResults").classList.remove("hidden");
+    return;
+  }
+
   const loader  = document.getElementById("ltLoader");
   const results = document.getElementById("ltResults");
+  loader.innerHTML = '<div style="font-size:13px;color:var(--on-surf-var);padding:12px">⏳ Running 5-pillar analysis...</div>';
   loader.style.display = "block";
   results.classList.add("hidden");
 
   try {
-    const res = await fetch(`${API}/api/long-term/${ticker}`);
+    const res = await fetch(`${API}/api/long-term/${ticker}?_t=${Date.now()}`);
     if (!res.ok) throw new Error(await res.text());
     const d = await res.json();
     renderLongTerm(d);
     _ltLoaded = ticker;
   } catch(e) {
-    loader.innerHTML = `<p style="color:var(--on-tertiary-cont);font-size:13px;">⚠ Analysis failed: ${e.message}</p>`;
+    loader.innerHTML = `<p style="color:#b45309;font-size:13px;padding:12px;">⚠ Analysis failed: ${e.message}</p>`;
   }
 }
 
@@ -1440,50 +1512,62 @@ function renderLongTerm(d) {
 let _ltProjChart = null;
 
 async function drawLongTermProjectionChart(d) {
-  // Inject chart container if not already present
+  // Build chart container (light glass theme to match site palette)
   let chartContainer = document.getElementById("ltProjChartWrap");
   if (!chartContainer) {
     const resultsEl = document.getElementById("ltResults");
     chartContainer = document.createElement("div");
     chartContainer.id = "ltProjChartWrap";
-    chartContainer.style.cssText = "margin:20px 0 8px;background:rgba(10,12,18,0.6);border:1px solid rgba(60,73,78,0.25);border-radius:12px;padding:16px 16px 8px;";
+    chartContainer.style.cssText = [
+      "margin:20px 0 8px",
+      "background:rgba(255,255,255,0.5)",
+      "backdrop-filter:blur(16px)",
+      "-webkit-backdrop-filter:blur(16px)",
+      "border:1px solid rgba(255,255,255,0.75)",
+      "border-radius:14px",
+      "padding:18px 18px 10px",
+      "box-shadow:0 2px 12px rgba(101,130,155,0.1),inset 0 1px 0 rgba(255,255,255,0.9)"
+    ].join(";");
     chartContainer.innerHTML = `
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
         <div>
-          <div style="font-family:var(--font-headline,Space Grotesk),sans-serif;font-size:13px;font-weight:700;color:#bbc9cf">📈 12-Month Price Projection</div>
-          <div style="font-size:11px;color:#859398;margin-top:2px">Based on 5-Pillar composite score · fundamental + technical trajectory</div>
+          <div style="font-size:13px;font-weight:700;color:var(--on-surface)">📈 12-Month Price Projection</div>
+          <div style="font-size:11px;color:var(--on-surf-var);margin-top:2px">Based on 5-Pillar composite score · fundamental + technical trajectory</div>
         </div>
-        <div id="ltProjBadge" style="display:flex;align-items:center;gap:6px;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;background:rgba(168,232,255,0.08);color:#a8e8ff">
-          <span style="width:6px;height:6px;border-radius:50%;background:#a8e8ff;display:inline-block"></span>
+        <div id="ltProjBadge" style="display:flex;align-items:center;gap:6px;padding:4px 12px;border-radius:6px;font-size:11px;font-weight:700;background:rgba(30,97,243,0.08);color:var(--primary)">
+          <span style="width:6px;height:6px;border-radius:50%;background:currentColor;display:inline-block"></span>
           MODEL PROJECTION
         </div>
       </div>
-      <div style="position:relative;height:200px"><canvas id="ltProjChart"></canvas></div>
+      <div style="position:relative;height:210px"><canvas id="ltProjChart"></canvas></div>
       <div id="ltProjMetrics" style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"></div>
     `;
-    // Insert before exit triggers section
     const exitEl = resultsEl.querySelector(".lt-exit-triggers");
     if (exitEl) resultsEl.insertBefore(chartContainer, exitEl);
     else resultsEl.appendChild(chartContainer);
   }
 
-  // Fetch real historical price data for anchor
-  let currentPrice = 0;
-  let histPrices = [];
-  let histLabels = [];
-  try {
-    const ticker = currentTicker;
-    if (!ticker) return;
-    const res = await fetch(`${API}/api/chart/${ticker}?timeframe=1y`);
-    const cData = await res.json();
-    if (cData.data && cData.data.length > 0) {
-      histPrices = cData.data.map(p => p.close);
-      histLabels = cData.data.map(p => p.time);
-      currentPrice = histPrices[histPrices.length - 1];
-    }
-  } catch(e) { console.error("LT chart fetch error", e); }
+  // ── Price data comes embedded in the LT response — no extra fetch needed ──
+  const histPrices  = d.hist_prices   || [];
+  const histLabels  = d.hist_dates    || [];
+  const currentPrice = d.current_price || (histPrices.length ? histPrices[histPrices.length - 1] : 0);
 
-  if (!currentPrice || currentPrice === 0) return;
+  if (!currentPrice || currentPrice === 0) {
+    const canvas = document.getElementById("ltProjChart");
+    if (canvas) {
+      const ctx = canvas.getContext("2d");
+      const w = canvas.parentElement.clientWidth || 400;
+      const h = parseInt(canvas.parentElement.style.height) || 210;
+      canvas.width  = w;
+      canvas.height = h;
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = "rgba(100,116,139,0.45)";
+      ctx.textAlign = "center";
+      ctx.font = "14px Inter, sans-serif";
+      ctx.fillText("Price data unavailable — check backend connection", w / 2, h / 2);
+    }
+    return;
+  }
 
   // Build 12-month projection from composite score
   const score = d.composite_score; // 0-10
@@ -1519,8 +1603,8 @@ async function drawLongTermProjectionChart(d) {
     projLower.push(parseFloat((price - band).toFixed(2)));
   }
 
-  // Use last 6 months of historical as anchor
-  const anchorCount = Math.min(6, Math.floor(histPrices.length / 4));
+  // Use last 30 trading days as the visible historical anchor leading into projection
+  const anchorCount  = Math.min(30, histPrices.length);
   const anchorPrices = histPrices.slice(-anchorCount);
   const anchorLabels = histLabels.slice(-anchorCount);
 
@@ -1621,14 +1705,14 @@ async function drawLongTermProjectionChart(d) {
       scales: {
         x: {
           ticks: { color: "#4b5563", maxTicksLimit: 10, maxRotation: 0, font: { size: 9 } },
-          grid: { color: "rgba(31,41,55,0.4)" },
+          grid: { color: "rgba(101,130,155,0.12)" },
         },
         y: {
           ticks: {
-            color: "#4b5563", font: { size: 9 },
+            color: "#6b7280", font: { size: 9 },
             callback: (v) => "₹" + (v >= 1e5 ? (v/1e5).toFixed(1)+"L" : Number(v).toLocaleString("en-IN")),
           },
-          grid: { color: "rgba(31,41,55,0.4)" },
+          grid: { color: "rgba(101,130,155,0.12)" },
         },
       },
     },
@@ -1638,16 +1722,16 @@ async function drawLongTermProjectionChart(d) {
   const metricsEl = document.getElementById("ltProjMetrics");
   if (metricsEl) {
     const metricItems = [
-      { label: "Current Price", value: `₹${Number(currentPrice).toLocaleString("en-IN")}`, color: "#a8e8ff" },
-      { label: "12M Target", value: `₹${Number(targetPrice).toLocaleString("en-IN")}`, color: projColor },
-      { label: "Expected Return", value: `${isPositive ? "+" : ""}${returnPct}%`, color: projColor },
-      { label: "Composite Score", value: `${d.composite_score}/10`, color: projColor },
-      { label: "Conviction", value: d.verdict.split(" ").slice(0,2).join(" "), color: projColor },
+      { label: "Current Price",   value: `₹${Number(currentPrice).toLocaleString("en-IN")}`, color: "var(--primary)" },
+      { label: "12M Target",      value: `₹${Number(targetPrice).toLocaleString("en-IN")}`,  color: projColor },
+      { label: "Expected Return", value: `${isPositive ? "+" : ""}${returnPct}%`,             color: projColor },
+      { label: "Composite Score", value: `${d.composite_score}/10`,                           color: projColor },
+      { label: "Conviction",      value: d.verdict.split(" ").slice(0,2).join(" "),            color: projColor },
     ];
     metricsEl.innerHTML = metricItems.map(m => `
-      <div style="flex:1;min-width:100px;background:rgba(255,255,255,0.03);border:1px solid rgba(60,73,78,0.2);border-radius:8px;padding:8px 10px;text-align:center">
-        <div style="font-size:10px;color:#859398;margin-bottom:4px">${m.label}</div>
-        <div style="font-family:var(--font-headline,Space Grotesk),sans-serif;font-size:13px;font-weight:700;color:${m.color}">${m.value}</div>
+      <div style="flex:1;min-width:90px;background:rgba(255,255,255,0.55);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.75);border-radius:10px;padding:8px 10px;text-align:center;box-shadow:inset 0 1px 0 rgba(255,255,255,0.9)">
+        <div style="font-size:10px;color:var(--outline);margin-bottom:4px;font-weight:600;letter-spacing:0.03em">${m.label}</div>
+        <div style="font-size:13px;font-weight:700;color:${m.color}">${m.value}</div>
       </div>
     `).join("");
   }
@@ -1799,6 +1883,7 @@ async function loadTicker(ticker) {
   loadVersion++;
   const myVersion = loadVersion;
   currentTicker = ticker;
+  _ltLoaded = null;   // reset so LT panel re-fetches for the new ticker
   document.getElementById("tickerInput").value = ticker;
 
   const emptyState = document.getElementById("chartEmptyState");
@@ -2111,13 +2196,32 @@ function renderFactorBreakdown(data) {
     });
   }
 
-  // LLM reasoning
+  // LLM reasoning — clean display for both live and fallback
   const insight = document.getElementById("llmInsight");
-  const textEl = document.getElementById("llmReasoningText");
-  if (data.llm_reasoning && insight && textEl) {
+  const textEl  = document.getElementById("llmReasoningText");
+  if (!insight || !textEl) return;
+
+  const llmData    = data.llm_analysis || {};
+  const reasoning  = llmData.reasoning || data.llm_reasoning || "";
+  const source     = llmData.source    || "fallback";
+  const isFallback = source === "fallback"
+    || reasoning.toLowerCase().includes("offline")
+    || reasoning.toLowerCase().includes("failed")
+    || reasoning.toLowerCase().includes("quota")
+    || reasoning.toLowerCase().includes("unavailable")
+    || reasoning.toLowerCase().includes("weight held");
+
+  if (reasoning) {
     insight.classList.remove("hidden");
-    textEl.textContent = `"${data.llm_reasoning}"`;
-  } else if (insight) {
+    if (isFallback) {
+      // Amber notice — don't show raw error text
+      textEl.innerHTML = `<span style="color:#b45309;font-style:normal;font-weight:600;">⚡ Gemini LLM — Fallback mode</span>
+<span style="display:block;margin-top:4px;color:#78716c;font-size:0.75rem;">13% weight held; redistributed to Technical (60%) + Sentiment (40%). Gemini will retry on next scan.</span>`;
+    } else {
+      // Live Gemini response
+      textEl.innerHTML = `<span style="color:#059669;font-style:normal;font-weight:600;">✦ Gemini AI</span> <span style="color:var(--on-surf-var)">"${reasoning}"</span>`;
+    }
+  } else {
     insight.classList.add("hidden");
   }
 }
