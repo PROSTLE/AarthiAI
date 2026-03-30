@@ -2,6 +2,7 @@
 LLM Market Analysis via Google Gemini API (google-genai SDK).
 Provides directional market insight (-1 to +1) with reasoning.
 Falls back gracefully to neutral (0) on API errors or quota exhaustion.
+Hardens against WinError 10053 with httpx no-proxy transport + retry logic.
 """
 
 from __future__ import annotations
@@ -16,6 +17,7 @@ load_dotenv()
 # ── New google-genai SDK ──────────────────────────────────────────────────────
 GEMINI_AVAILABLE = False
 _gemini_client = None
+_httpx_available = False
 
 try:
     from google import genai as _genai_sdk
@@ -23,14 +25,48 @@ try:
 except ImportError:
     pass
 
+try:
+    import httpx
+    _httpx_available = True
+except ImportError:
+    pass
+
+
+def _make_client():
+    """Build a Gemini client, bypassing Windows proxy issues with httpx if available.
+    WinError 10053 is typically caused by Windows firewall/proxy intercepting the
+    TCP connection. Using httpx with proxies={} bypasses system proxy settings.
+    """
+    api_key = os.getenv("GEMINI_API_KEY", "")
+    if not api_key or not GEMINI_AVAILABLE:
+        return None
+    if _httpx_available:
+        try:
+            transport = httpx.HTTPTransport(retries=2)
+            http_client = httpx.Client(
+                transport=transport,
+                proxies={},                          # bypass system proxy
+                timeout=httpx.Timeout(30.0, connect=10.0),
+                verify=True,
+            )
+            return _genai_sdk.Client(api_key=api_key, http_client=http_client)
+        except Exception:
+            pass
+    # Fallback: default client (no httpx)
+    return _genai_sdk.Client(api_key=api_key)
+
 # ── Model selection (tried in order until one works) ──────────────────────────
 GEMINI_MODELS = [
-    "gemini-2.5-flash",
     "gemini-2.0-flash",
     "gemini-2.0-flash-lite",
+    "gemini-1.5-flash",
     "gemini-flash-latest",
 ]
 _active_model: str | None = None
+
+# Connection retry settings
+_MAX_RETRIES = 3
+_RETRY_DELAY = 1.5  # seconds, doubles on each retry
 
 # ── Cache: 30-minute TTL per ticker ──────────────────────────────────────────
 _LLM_CACHE_TTL = 30 * 60
@@ -143,8 +179,8 @@ def analyze_with_llm(
     Get LLM market analysis. Returns:
       {"score": float, "direction": str, "reasoning": str, "source": str}
     Falls back to neutral if Gemini is unavailable or quota is exhausted.
+    WinError 10053 is retried up to _MAX_RETRIES times.
     """
-    # Must declare global before any use of these names in this function
     global _gemini_client, _active_model
 
     # Check cache first
@@ -156,8 +192,9 @@ def analyze_with_llm(
     fallback = {
         "score": 0.0,
         "direction": "neutral",
-        "reasoning": "LLM analysis unavailable — using technical/sentiment signals only",
+        "reasoning": "Gemini LLM offline — technical & sentiment signals active (13% weight held)",
         "source": "fallback",
+        "confidence": 0.0,   # weight redistributes to technical/sentiment
     }
 
     if not _init_gemini():
@@ -172,47 +209,80 @@ def analyze_with_llm(
         sentiment_score, sentiment_label, recent_prices,
     )
 
-    try:
-        response = _gemini_client.models.generate_content(
-            model=_active_model,
-            contents=prompt,
-        )
-        text = response.text.strip()
+    last_error = ""
+    for attempt in range(_MAX_RETRIES):
+        try:
+            response = _gemini_client.models.generate_content(
+                model=_active_model,
+                contents=prompt,
+            )
+            text = response.text.strip()
 
-        # Extract JSON from response (handle markdown code blocks)
-        if "```" in text:
-            text = text.split("```")[1]
-            if text.startswith("json"):
-                text = text[4:]
-            text = text.strip()
+            # Extract JSON from response (handle markdown code blocks)
+            if "```" in text:
+                text = text.split("```")[1]
+                if text.startswith("json"):
+                    text = text[4:]
+                text = text.strip()
 
-        parsed = json.loads(text)
-        score = max(-1.0, min(1.0, float(parsed.get("score", 0))))
+            parsed = json.loads(text)
+            score = max(-1.0, min(1.0, float(parsed.get("score", 0))))
 
-        result = {
-            "score": round(score, 3),
-            "direction": parsed.get("direction", "neutral"),
-            "reasoning": parsed.get("reasoning", ""),
-            "source": f"gemini/{_active_model}",
-        }
-        _set_cached(ticker, result)
-        return result
+            result = {
+                "score": round(score, 3),
+                "direction": parsed.get("direction", "neutral"),
+                "reasoning": parsed.get("reasoning", ""),
+                "source": f"gemini/{_active_model}",
+                "confidence": 1.0,
+            }
+            _set_cached(ticker, result)
+            return result
 
-    except Exception as e:
-        error_msg = str(e)
+        except Exception as e:
+            error_msg = str(e)
+            last_error = error_msg
 
-        if "429" in error_msg or "RESOURCE_EXHAUSTED" in error_msg:
-            # Quota hit — reset so next call tries to find a working model
-            fallback["reasoning"] = "LLM quota exhausted — using technical/sentiment signals only"
-            _gemini_client = None
-            _active_model = None
-        elif "API_KEY_INVALID" in error_msg or "API key expired" in error_msg:
-            fallback["reasoning"] = "LLM API key invalid/expired — using technical/sentiment signals only"
-            _gemini_client = None
-            _active_model = None
-        else:
-            fallback["reasoning"] = f"LLM analysis failed: {error_msg[:100]}"
-            # Cache non-auth errors so we don't spam the API
-            _set_cached(ticker, fallback)
+            if "429" in error_msg or "RESOURCE_EXHAUSTED" in error_msg:
+                fallback["reasoning"] = "Gemini quota limit reached — technical/sentiment active (13% weight held)"
+                _gemini_client = None
+                _active_model = None
+                break
 
-        return fallback
+            elif "API_KEY_INVALID" in error_msg or "API key expired" in error_msg:
+                fallback["reasoning"] = "Gemini API key issue — technical/sentiment active (13% weight held)"
+                _gemini_client = None
+                _active_model = None
+                break
+
+            elif "10053" in error_msg or "WinError" in error_msg or "ConnectionAborted" in error_msg or "ConnectionReset" in error_msg:
+                # Windows TCP connection aborted — rebuild client and retry
+                wait = _RETRY_DELAY * (2 ** attempt)
+                print(f"[LLM] WinError 10053 on {ticker} (attempt {attempt+1}/{_MAX_RETRIES}), rebuilding connection in {wait:.1f}s...")
+                time.sleep(wait)
+                # Rebuild connection with fresh client
+                try:
+                    _gemini_client = _make_client()
+                    _active_model = None
+                    # Re-init model probe
+                    for model in GEMINI_MODELS:
+                        try:
+                            _gemini_client.models.generate_content(model=model, contents="ping")
+                            _active_model = model
+                            break
+                        except Exception:
+                            continue
+                    if _active_model is None:
+                        break
+                except Exception:
+                    break
+            else:
+                # Other error — don't retry
+                fallback["reasoning"] = f"Gemini unavailable — technical/sentiment active (13% weight held)"
+                _set_cached(ticker, fallback)
+                return fallback
+
+    # All retries exhausted
+    print(f"[LLM] All retries failed for {ticker}: {last_error[:80]}")
+    fallback["reasoning"] = "Gemini connection failed after retries — technical/sentiment active (13% weight held)"
+    _set_cached(ticker, fallback)
+    return fallback

@@ -244,30 +244,53 @@ def _add_minimum_volatility(
 
 
 class StockLSTM(nn.Module):
+    """
+    Bidirectional LSTM with self-attention pooling.
+    • Forward pass reads t=0→t=60; backward pass reads t=60→t=0.
+    • Attention: learns which of the 60 timesteps matter most for the 5-day forecast.
+      e.g. a dip at day 20 followed by recovery at day 40 is now contextualised
+      by both directions simultaneously.
+    Drop-in replacement for the old unidirectional StockLSTM.
+    """
     def __init__(self, input_size: int = 10, hidden_size: int = 128,
                  num_layers: int = 3, output_size: int = 5, dropout: float = 0.3):
         super().__init__()
         self.hidden_size = hidden_size
         self.num_layers = num_layers
 
+        # bidirectional=True: output dim doubles → hidden_size * 2
         self.lstm = nn.LSTM(
             input_size, hidden_size, num_layers,
-            batch_first=True, dropout=dropout if num_layers > 1 else 0.0,
+            batch_first=True,
+            dropout=dropout if num_layers > 1 else 0.0,
+            bidirectional=True,
+        )
+
+        # Attention: learns which timestep context matters most for this trade
+        self.attention = nn.Sequential(
+            nn.Linear(hidden_size * 2, hidden_size),
+            nn.Tanh(),
+            nn.Linear(hidden_size, 1),
         )
 
         self.head = nn.Sequential(
-            nn.Linear(hidden_size, hidden_size // 2),
+            nn.Linear(hidden_size * 2, hidden_size),
             nn.ReLU(),
             nn.Dropout(dropout),
-            nn.Linear(hidden_size // 2, output_size),
+            nn.Linear(hidden_size, output_size),
         )
 
     def forward(self, x):
-        h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size, device=x.device)
-        c0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size, device=x.device)
-        out, _ = self.lstm(x, (h0, c0))
-        out = self.head(out[:, -1, :])
-        return out
+        # lstm_out: [batch, seq_len, hidden_size * 2]
+        lstm_out, _ = self.lstm(x)
+
+        # Attention pooling over all 60 timesteps
+        attn_scores  = self.attention(lstm_out)           # [batch, seq, 1]
+        attn_weights = torch.softmax(attn_scores, dim=1)  # normalise over time
+        context = (lstm_out * attn_weights).sum(dim=1)    # [batch, hidden*2]
+
+        return self.head(context)
+
 
 
 def _prepare_features(df: pd.DataFrame):
@@ -334,6 +357,7 @@ def train_and_predict(
     sentiment_score: float = 0.0,
     technical_score: float = 0.0,
     llm_score: float = 0.0,
+    llm_confidence: float = 1.0,   # 0.0 = Gemini dead/fallback, 1.0 = live response
     sentiment_label: str = "neutral",
     technical_direction: str = "neutral",
     llm_direction: str = "neutral",
@@ -368,6 +392,17 @@ def train_and_predict(
         w_technical = W_TECHNICAL
         w_sentiment = W_SENTIMENT
         w_llm = W_LLM
+
+    # ── Anti-gravity: LLM confidence gating ──
+    # If Gemini is dead (confidence=0.0), don't let 13% of the weight budget
+    # push predictions toward a "neutral" 0 that means "no data, not truly neutral."
+    # Redistribute the freed weight proportionally to technical (60%) and sentiment (40%).
+    _llm_conf = max(0.0, min(1.0, float(llm_confidence)))
+    effective_w_llm       = w_llm * _llm_conf
+    _freed                = w_llm - effective_w_llm      # up to 0.13 recaptured
+    effective_w_technical = w_technical + _freed * 0.60  # 60% to technical
+    effective_w_sentiment = w_sentiment + _freed * 0.40  # 40% to sentiment
+
 
     features, close, n_features = _prepare_features(df)
     X, y, scaler, split = _prepare_data(features)
@@ -494,15 +529,15 @@ def train_and_predict(
         models_used = ["LSTM"]
 
     # ── Apply directional factors (sentiment + technical + LLM) ──
-    # Each factor nudges prices — total impact capped at MAX_DIRECTIONAL_IMPACT_PCT
-    # LLM and sentiment can push direction but cannot override price level
-    directional_weight = w_sentiment + w_technical + w_llm 
+    # Each factor nudges prices — total impact capped at MAX_DIRECTIONAL_IMPACT_PCT.
+    # LLM weight is confidence-gated: if Gemini is dead, its share goes to technical+sentiment.
+    directional_weight = effective_w_sentiment + effective_w_technical + effective_w_llm
     if directional_weight > 0:
-        # Weighted directional score
+        # Weighted directional score using effective (gated) weights
         weighted_dir_score = (
-            w_sentiment * sentiment_score +
-            w_technical * technical_score +
-            w_llm * llm_score
+            effective_w_sentiment * sentiment_score +
+            effective_w_technical * technical_score +
+            effective_w_llm       * llm_score
         ) / directional_weight
 
         # Cap maximum impact
@@ -517,6 +552,7 @@ def train_and_predict(
             predicted_prices.append(round(adjusted, 2))
     else:
         predicted_prices = [round(p, 2) for p in base_prices]
+
 
     # ── Post-processing: apply physical constraints ──
     # Order matters:

@@ -23,12 +23,13 @@ def add_technical_indicators(df: pd.DataFrame) -> pd.DataFrame:
     df["SMA_20"] = ta.trend.sma_indicator(close, window=20)
     df["SMA_50"] = ta.trend.sma_indicator(close, window=50)
     df["EMA_20"] = ta.trend.ema_indicator(close, window=20)
-    df["RSI"] = ta.momentum.rsi(close, window=14)
+    df["RSI"] = ta.momentum.rsi(close, window=14)     # 14-day horizon (regime)
+    df["RSI_5"] = ta.momentum.rsi(close, window=5)   # 5-day horizon (aligned to forecast)
 
     macd = ta.trend.MACD(close)
     df["MACD"] = macd.macd()
     df["MACD_Signal"] = macd.macd_signal()
-    df["MACD_Hist"] = macd.macd_diff()
+    df["MACD_Hist"] = macd.macd_diff()               # histogram for acceleration scoring
 
     bb = ta.volatility.BollingerBands(close, window=20, window_dev=2)
     df["BB_Upper"] = bb.bollinger_hband()
@@ -311,3 +312,38 @@ def detect_ipo_stock(ticker: str) -> dict:
     except Exception:
         return {"is_ipo": False, "ipo_age_days": 999, "listing_date": None}
 
+
+
+def fetch_tcs_macro_context() -> dict:
+    """
+    TCS-specific macro signals: USD/INR 5-day return + CNXIT sector alpha vs Nifty.
+    These are orthogonal to all price-based technical signals.
+
+    Relevance:
+      - TCS earns ~85% of revenue in USD. A 1% INR appreciation (USD weakening)
+        correlates with ~-0.6-0.8% TCS price within 3-5 days.
+      - CNXIT outperforming Nifty = IT sector tailwind that lifts the whole cohort.
+
+    Falls back to safe neutral defaults on any network error.
+    """
+    result = {"usd_inr": 84.0, "usd_5d_return": 0.0, "cnxit_5d_return": 0.0, "available": False}
+    try:
+        fx_hist = yf.Ticker("USDINR=X").history(period="10d")
+        if len(fx_hist) >= 6:
+            result["usd_inr"]       = round(float(fx_hist["Close"].iloc[-1]), 4)
+            result["usd_5d_return"] = round(
+                (float(fx_hist["Close"].iloc[-1]) / float(fx_hist["Close"].iloc[-6]) - 1) * 100, 3
+            )
+            result["available"] = True
+    except Exception:
+        pass
+    try:
+        cnxit_hist = yf.Ticker("^CNXIT").history(period="10d")
+        nifty_hist = yf.Ticker("^NSEI").history(period="10d")
+        if len(cnxit_hist) >= 6 and len(nifty_hist) >= 6:
+            cnxit_ret = (float(cnxit_hist["Close"].iloc[-1]) / float(cnxit_hist["Close"].iloc[-6]) - 1) * 100
+            nifty_ret = (float(nifty_hist["Close"].iloc[-1]) / float(nifty_hist["Close"].iloc[-6]) - 1) * 100
+            result["cnxit_5d_return"] = round(cnxit_ret - nifty_ret, 3)
+    except Exception:
+        pass
+    return result

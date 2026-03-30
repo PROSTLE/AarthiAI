@@ -25,7 +25,8 @@
       <a class="tnav-link" id="nav-sip"     href="#" onclick="navigateTo('sip');return false">SIP</a>
       <a class="tnav-link" id="nav-company" href="#" onclick="navigateTo('company');return false">Companies</a>
       <a class="tnav-link" id="nav-orders"  href="#" onclick="navigateTo('orders');return false">Orders</a>
-      <a class="tnav-link" href="../AARTHI/frontend/index.html" style="color:#fff;background:#16a34a;border-radius:50px;padding:4px 14px;margin-left:4px;font-weight:700;">← Home</a>
+      <a class="tnav-link" id="nav-tradebot" href="#" onclick="navigateTo('tradebot');return false" style="background:linear-gradient(135deg,#16a34a,#22c55e);color:#fff;border-radius:50px;padding:4px 14px;margin-left:4px;font-weight:700;">TradeBot</a>
+      <a class="tnav-link" href="http://localhost:3001/index.html" style="color:#fff;background:#16a34a;border-radius:50px;padding:4px 14px;margin-left:4px;font-weight:700;">← Home</a>
     </div>
   </div>
   <div class="topnav-center">
@@ -58,7 +59,7 @@
     <span class="material-symbols-outlined topnav-icon" onclick="openTradePanel()" title="Trade">swap_horiz</span>
     <span class="material-symbols-outlined topnav-icon">notifications</span>
     <span class="material-symbols-outlined topnav-icon">settings</span>
-    <div class="topnav-avatar">AI</div>
+
   </div>
 </nav>
 
@@ -89,6 +90,9 @@
     </a>
     <a class="sidenav-link" id="snav-orders" href="#" onclick="navigateTo('orders');return false">
       <span class="material-symbols-outlined">swap_vert</span> Orders
+    </a>
+    <a class="sidenav-link" id="snav-tradebot" href="#" onclick="navigateTo('tradebot');return false">
+      <span class="material-symbols-outlined">smart_toy</span> TradeBot
     </a>
   </nav>
 
@@ -394,9 +398,9 @@
         <!-- Left: Fund List -->
         <div>
           <div class="scatter-card">
-            <h3>Risk–Reward Analysis</h3>
-            <p>3-Year Annualized Return vs. Expense Ratio (bubble size = AUM)</p>
-            <div class="scatter-chart-wrap"><canvas id="scatterChart"></canvas></div>
+            <h3>📊 Fund Return Comparison</h3>
+            <p>Top 8 Funds — 1Y, 3Y and 5Y annualized returns side-by-side</p>
+            <div class="scatter-chart-wrap" style="height:340px"><canvas id="scatterChart"></canvas></div>
           </div>
 
           <div class="fund-list" id="fundList">
@@ -795,7 +799,89 @@
       <div id="tpWatchlistList" class="tp-watchlist-list"><div class="tp-empty">Your watchlist is empty. Add stocks from the Trade tab.</div></div>
     </div>
   </div>
+
+  <!-- ════════════════════════════════
+       VIEW: TRADEBOT
+  ════════════════════════════════ -->
+  <div id="view-tradebot" class="view-content spa-view hidden">
+    <div class="tb-root">
+
+      <!-- ── Header row ── -->
+      <div class="tb-header">
+        <div class="tb-header-left">
+          <span class="tb-title">TradeBot <span class="tb-badge">LIVE</span></span>
+          <span class="tb-subtitle">Autonomous NSE/BSE signal engine</span>
+        </div>
+        <div class="tb-header-right">
+          <div class="tb-status-chip" id="tb-status-chip">⏳ Awaiting scan</div>
+          <button class="tb-scan-btn" onclick="tbRunScan()">Run Scan</button>
+        </div>
+      </div>
+
+      <!-- ── Mood Engine row ── -->
+      <div class="tb-section-title">Morning Mood</div>
+      <div class="tb-mood-row">
+        <button class="tb-mood-btn" id="mood-focused"    onclick="tbSetMood('focused')"    title="Supervised — approve each trade">🎯 Focused</button>
+        <button class="tb-mood-btn" id="mood-busy"       onclick="tbSetMood('busy')"       title="Semi-Auto — auto entry, manual exit">📱 Busy</button>
+        <button class="tb-mood-btn" id="mood-tired"      onclick="tbSetMood('tired')"      title="Full AutoTrade — max 3 trades">😴 Tired</button>
+        <button class="tb-mood-btn" id="mood-out"        onclick="tbSetMood('out')"        title="Paused — monitoring only">🚫 Out</button>
+        <button class="tb-mood-btn" id="mood-aggressive" onclick="tbSetMood('aggressive')" title="Aggressive — 1.5x size, lower threshold">🔥 Aggressive</button>
+      </div>
+      <div class="tb-mode-status" id="tb-mode-status">Select your mood to activate AutoTrade mode</div>
+
+      <!-- ── Risk status cards ── -->
+      <div class="tb-risk-row">
+        <div class="tb-risk-card">
+          <div class="tb-risk-label">Daily Risk Limit</div>
+          <div class="tb-risk-value" id="tb-risk-limit">₹—</div>
+        </div>
+        <div class="tb-risk-card">
+          <div class="tb-risk-label">Risk Used</div>
+          <div class="tb-risk-value risk-used" id="tb-risk-used">₹—</div>
+        </div>
+        <div class="tb-risk-card">
+          <div class="tb-risk-label">Budget Left</div>
+          <div class="tb-risk-value risk-ok" id="tb-risk-left">₹—</div>
+        </div>
+        <div class="tb-risk-card">
+          <div class="tb-risk-label">AutoTrade</div>
+          <div class="tb-risk-value" id="tb-autotrade-gate">—</div>
+        </div>
+      </div>
+
+      <!-- ── Two columns: Sector Heat + Market Context ── -->
+      <div class="tb-two-col">
+        <div class="tb-card">
+          <div class="tb-card-title">🔥 Sector Heat</div>
+          <div class="tb-sector-list" id="tb-sector-list">
+            <div class="tb-empty">Run a scan to see sector scores</div>
+          </div>
+        </div>
+        <div class="tb-card">
+          <div class="tb-card-title">📡 Market Context</div>
+          <div class="tb-context-list" id="tb-context-list">
+            <div class="tb-empty">Run a scan to see cues</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Signal Picks ── -->
+      <div class="tb-section-title">Today's Signals <span class="tb-conf-hint">confidence score / 100</span></div>
+      <div class="tb-signals-grid" id="tb-signals-grid">
+        <div class="tb-empty" style="grid-column:1/-1">No signals yet — click Run Scan at 9:15 AM IST</div>
+      </div>
+
+      <!-- ── Signal Brief text ── -->
+      <div class="tb-card" style="margin-top:20px">
+        <div class="tb-card-title">📋 Daily Signal Brief</div>
+        <pre class="tb-brief-pre" id="tb-brief-pre">Brief will appear after scan runs.</pre>
+      </div>
+
+    </div>
+  </div>
+
 </div>
+
 
 <!-- Footer -->
 <footer class="app-footer">
@@ -815,6 +901,18 @@
   </div>
 </footer>
 
-<script src="app.js?v=11"></script>
+<script src="tradebot.js?v=4"></script>
+<script src="app.js?v=12"></script>
+<script>
+  // Hash-based deep-linking: honour #view in URL on load
+  (function() {
+    const VALID = ["markets","funds","sip","company","orders","tradebot"];
+    const hash  = window.location.hash.replace("#","").toLowerCase();
+    if (VALID.includes(hash)) {
+      // Wait for landing page to settle, then navigate
+      setTimeout(() => { if (typeof navigateTo === "function") navigateTo(hash); }, 200);
+    }
+  })();
+</script>
 </body>
 </html>

@@ -68,13 +68,47 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 20px 48px;
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    background: rgba(0, 0, 0, 0.4);
-    border-bottom: 1px solid var(--border-subtle);
-    transition: var(--transition-smooth);
+    padding: 16px 48px;
+    /* Base: dark glass for hero section */
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    background: rgba(0, 0, 0, 0.35);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    /* Glow line at bottom */
+    box-shadow:
+        0 1px 0 rgba(96, 158, 69, 0.15),
+        0 4px 24px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    transition: background 0.45s cubic-bezier(0.4,0,0.2,1),
+                border-color 0.45s cubic-bezier(0.4,0,0.2,1),
+                box-shadow 0.45s cubic-bezier(0.4,0,0.2,1),
+                padding 0.35s cubic-bezier(0.4,0,0.2,1);
 }
+
+/* Scrolled into white section — frosted glass effect */
+.nav-bar.nav-scrolled {
+    background: rgba(255, 255, 255, 0.82);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.07);
+    box-shadow:
+        0 1px 0 rgba(96, 158, 69, 0.12),
+        0 4px 32px rgba(0, 0, 0, 0.08),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    padding: 12px 48px;
+}
+
+.nav-bar.nav-scrolled .nav-link {
+    color: rgba(30, 30, 40, 0.7);
+}
+
+.nav-bar.nav-scrolled .nav-link:hover {
+    color: #1a1a2a;
+}
+
+.nav-bar.nav-scrolled .logo-text {
+    color: #1a1a2a;
+    -webkit-text-fill-color: #1a1a2a;
+}
+
 
 .nav-logo {
     display: flex;
@@ -95,6 +129,7 @@ body {
     font-weight: 700;
     font-size: 20px;
     letter-spacing: -0.02em;
+    transition: color 0.3s;
 }
 
 .nav-links {
@@ -108,7 +143,7 @@ body {
     font-weight: 500;
     color: var(--text-secondary);
     text-decoration: none;
-    transition: var(--transition-fast);
+    transition: color 0.25s cubic-bezier(0.4,0,0.2,1);
     position: relative;
 }
 
@@ -124,7 +159,7 @@ body {
     width: 0;
     height: 2px;
     background: var(--gradient-primary);
-    transition: var(--transition-smooth);
+    transition: width 0.3s cubic-bezier(0.4,0,0.2,1);
     border-radius: 1px;
 }
 
@@ -141,6 +176,8 @@ body {
     -webkit-text-fill-color: white;
     -webkit-background-clip: unset;
     background-clip: unset;
+    box-shadow: 0 2px 12px rgba(96,158,69,0.25);
+    transition: transform 0.2s, box-shadow 0.2s;
 }
 
 .btn-nav::after {
@@ -148,8 +185,8 @@ body {
 }
 
 .btn-nav:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 20px rgba(96, 158, 69, 0.3);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 24px rgba(96, 158, 69, 0.4);
 }
 
 .hero {

@@ -356,12 +356,13 @@ def _score_growth(info: dict, sector: str) -> tuple[float, list[str]]:
         signals.append("📋 Track order book, government capex allocation & execution rate")
 
     # Market cap (size proxy for growth ceiling)
+    # NOTE: yfinance marketCap is in USD. ₹500 Cr ≈ USD 60M (6e7)
     mcap = _f(info, "marketCap")
-    if mcap < 5e9:   # <500 Cr
-        score -= 1.5; signals.append("🚫 HARD REJECT: Market cap below ₹500 Cr liquidity threshold")
-    elif mcap < 2e10:
-        signals.append("~ Small cap — higher growth potential, higher volatility")
-    elif mcap > 5e11:
+    if mcap < 6e7:   # < ₹500 Cr
+        score -= 1.5; signals.append("⚠ Small cap below ₹500 Cr — liquidity risk, higher volatility")
+    elif mcap < 2.5e8:  # < ₹2000 Cr
+        signals.append("~ Small-mid cap — higher growth potential, higher volatility")
+    elif mcap > 6e9:  # > ₹50,000 Cr
         signals.append("✓ Large cap — steady compounder, lower upside ceiling")
 
     return max(0.0, min(10.0, score)), signals
@@ -371,9 +372,10 @@ def _score_growth(info: dict, sector: str) -> tuple[float, list[str]]:
 
 def _check_hard_rejects(info: dict, sector: str) -> list[str]:
     rejects = []
+    # yfinance marketCap is in USD. ₹100 Cr ≈ USD 12M (1.2e7)
     mcap = _f(info, "marketCap")
-    if mcap < 5_000_000_000:   # ~₹500 Cr at 82 INR/USD
-        rejects.append("Market cap below ₹500 Cr — liquidity risk")
+    if mcap > 0 and mcap < 1.2e7:   # genuinely tiny: < ₹100 Cr
+        rejects.append("Market cap below ₹100 Cr — liquidity risk")
 
     dte = _f(info, "debtToEquity") / 100
     if sector not in ("banking",) and dte > 5.0:
@@ -442,7 +444,7 @@ def analyze_long_term(ticker: str, info: dict, df_latest: dict,
         p5_raw * weights["growth"]
     )
 
-    # Hard reject → cap at 3.9
+    # Hard reject → cap at 3.9 only for genuinely tiny/distressed stocks
     if hard_rejects:
         composite = min(composite, 3.9)
 

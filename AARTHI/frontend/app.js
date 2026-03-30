@@ -687,26 +687,19 @@ document.addEventListener('DOMContentLoaded', () => {
     
     simulatePriceUpdates();
 
-    // Navbar scroll effect
-    let lastScroll = 0;
-    window.addEventListener('scroll', () => {
-        const nav = document.getElementById('main-nav');
-        const currentScroll = window.pageYOffset;
-        
-        if (currentScroll > 100) {
-            nav.style.background = 'rgba(255, 255, 255, 0.92)';
-            nav.style.backdropFilter = 'blur(20px)';
-            nav.style.borderBottomColor = 'rgba(0, 0, 0, 0.06)';
-            nav.querySelectorAll('.nav-link:not(.btn-nav)').forEach(l => l.style.color = '#555');
-            nav.querySelector('.logo-text').style.color = '#1a1a2a';
+    // ── Navbar glass transition on scroll ────────────────────────
+    const nav = document.getElementById('main-nav');
+    const GLASS_THRESHOLD = 80;
+
+    function updateNavGlass() {
+        const scrollY = window.pageYOffset || document.documentElement.scrollTop;
+        if (scrollY > GLASS_THRESHOLD) {
+            nav.classList.add('nav-scrolled');
         } else {
-            nav.style.background = 'rgba(0, 0, 0, 0.4)';
-            nav.style.backdropFilter = 'blur(20px)';
-            nav.style.borderBottomColor = 'rgba(255, 255, 255, 0.06)';
-            nav.querySelectorAll('.nav-link:not(.btn-nav)').forEach(l => l.style.color = '');
-            nav.querySelector('.logo-text').style.color = '';
+            nav.classList.remove('nav-scrolled');
         }
-        
-        lastScroll = currentScroll;
-    });
+    }
+
+    window.addEventListener('scroll', updateNavGlass, { passive: true });
+    updateNavGlass();
 });
