@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>KINETIC | Nifty 50 Overview</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "surface-container-highest": "#333539",
+                        "error-container": "#93000a",
+                        "tertiary-fixed-dim": "#ffb3b3",
+                        "surface-container-high": "#282a2e",
+                        "surface-container": "#1e2024",
+                        "error": "#ffb4ab",
+                        "on-tertiary-fixed-variant": "#920021",
+                        "on-primary-fixed-variant": "#004e5f",
+                        "outline-variant": "#3c494e",
+                        "on-secondary-fixed": "#002108",
+                        "surface-tint": "#3cd7ff",
+                        "on-tertiary": "#680014",
+                        "on-secondary-container": "#004d1b",
+                        "inverse-surface": "#e2e2e8",
+                        "secondary-container": "#02c953",
+                        "on-tertiary-container": "#a30026",
+                        "tertiary": "#ffd4d3",
+                        "inverse-primary": "#00677e",
+                        "surface": "#111318",
+                        "tertiary-container": "#ffadad",
+                        "on-surface-variant": "#bbc9cf",
+                        "on-error": "#690005",
+                        "on-tertiary-fixed": "#400009",
+                        "on-error-container": "#ffdad6",
+                        "primary-container": "#00d4ff",
+                        "on-secondary": "#003912",
+                        "inverse-on-surface": "#2f3035",
+                        "background": "#111318",
+                        "surface-container-lowest": "#0c0e12",
+                        "secondary-fixed-dim": "#3ce36a",
+                        "secondary-fixed": "#69ff87",
+                        "primary": "#a8e8ff",
+                        "on-secondary-fixed-variant": "#00531e",
+                        "tertiary-fixed": "#ffdad9",
+                        "surface-variant": "#333539",
+                        "on-primary": "#003642",
+                        "surface-container-low": "#1a1c20",
+                        "surface-bright": "#37393e",
+                        "primary-fixed-dim": "#3cd7ff",
+                        "secondary": "#40e56c",
+                        "primary-fixed": "#b4ebff",
+                        "on-surface": "#e2e2e8",
+                        "surface-dim": "#111318",
+                        "outline": "#859398",
+                        "on-primary-fixed": "#001f27",
+                        "on-primary-container": "#00586b",
+                        "on-background": "#e2e2e8"
+                    },
+                    fontFamily: {
+                        "headline": ["Space Grotesk"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    },
+                    borderRadius: {"DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body selection:bg-primary/30 selection:text-primary overflow-hidden">
+<!-- TopNavBar -->
+<header class="fixed top-0 w-full z-50 bg-[#111318] flex justify-between items-center px-6 h-16 w-full">
+<div class="flex items-center gap-8">
+<span class="text-2xl font-black tracking-tighter text-[#a8e8ff] uppercase font-['Space_Grotesk']">KINETIC</span>
+<nav class="hidden md:flex items-center gap-6 font-['Space_Grotesk'] font-bold tracking-tight">
+<a class="text-[#e2e2e8] opacity-70 hover:bg-[#333539] transition-colors duration-200 px-3 py-1 rounded" href="#">Markets</a>
+<a class="text-[#a8e8ff] border-b-2 border-[#00d4ff] pb-1" href="#">Nifty 50</a>
+<a class="text-[#e2e2e8] opacity-70 hover:bg-[#333539] transition-colors duration-200 px-3 py-1 rounded" href="#">Portfolio</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative hidden lg:block">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">search</span>
+<input class="bg-surface-container-lowest border-none rounded-full pl-10 pr-4 py-2 text-sm w-64 focus:ring-1 focus:ring-primary" placeholder="Search indices or stocks..." type="text"/>
+</div>
+<button class="material-symbols-outlined text-[#e2e2e8] opacity-70 hover:bg-[#333539] p-2 rounded-full transition-all">notifications</button>
+<button class="material-symbols-outlined text-[#e2e2e8] opacity-70 hover:bg-[#333539] p-2 rounded-full transition-all">settings</button>
+<div class="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-primary-container flex items-center justify-center text-on-primary font-bold text-xs" data-alt="User avatar placeholder with abstract gradient">JD</div>
+</div>
+</header>
+<div class="flex h-screen pt-16">
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-16 h-[calc(100vh-64px)] w-64 bg-[#1a1c20] border-r border-[#333539]/15 flex flex-col py-4 h-full gap-2 z-40 hidden md:flex">
+<div class="px-6 mb-6">
+<h2 class="font-['Space_Grotesk'] font-bold text-[#a8e8ff] text-lg uppercase tracking-wider">KINETIC</h2>
+<p class="text-[10px] text-[#e2e2e8]/40 uppercase tracking-[0.2em]">Pro Terminal</p>
+</div>
+<nav class="flex-1 flex flex-col gap-1 px-2">
+<a class="flex items-center gap-3 px-4 py-3 text-[#e2e2e8]/60 hover:text-[#e2e2e8] hover:bg-[#333539] transition-all duration-200 hover:translate-x-1 group" href="#">
+<span class="material-symbols-outlined text-xl">dashboard</span>
+<span class="font-['Inter'] font-medium text-sm">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-[#a8e8ff]/10 to-transparent text-[#a8e8ff] border-l-4 border-[#00d4ff] font-['Inter'] font-medium text-sm" href="#">
+<span class="material-symbols-outlined text-xl">analytics</span>
+<span>Analysis</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-[#e2e2e8]/60 hover:text-[#e2e2e8] hover:bg-[#333539] transition-all duration-200 hover:translate-x-1 group" href="#">
+<span class="material-symbols-outlined text-xl">visibility</span>
+<span class="font-['Inter'] font-medium text-sm">Watchlist</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-[#e2e2e8]/60 hover:text-[#e2e2e8] hover:bg-[#333539] transition-all duration-200 hover:translate-x-1 group" href="#">
+<span class="material-symbols-outlined text-xl">receipt_long</span>
+<span class="font-['Inter'] font-medium text-sm">Orders</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-[#e2e2e8]/60 hover:text-[#e2e2e8] hover:bg-[#333539] transition-all duration-200 hover:translate-x-1 group" href="#">
+<span class="material-symbols-outlined text-xl">history</span>
+<span class="font-['Inter'] font-medium text-sm">History</span>
+</a>
+</nav>
+<div class="px-4 mt-auto space-y-4">
+<button class="w-full py-3 bg-gradient-to-br from-primary to-primary-container text-on-primary font-bold rounded-DEFAULT text-sm uppercase tracking-tighter hover:opacity-90 transition-all">
+                    Quick Trade
+                </button>
+<div class="pt-4 border-t border-outline-variant/20">
+<a class="flex items-center gap-3 px-4 py-2 text-[#e2e2e8]/60 hover:text-[#e2e2e8] transition-all text-xs" href="#">
+<span class="material-symbols-outlined text-lg">help</span>
+<span>Support</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-2 text-[#e2e2e8]/60 hover:text-[#e2e2e8] transition-all text-xs" href="#">
+<span class="material-symbols-outlined text-lg">logout</span>
+<span>Logout</span>
+</a>
+</div>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="flex-1 ml-0 md:ml-64 overflow-y-auto hide-scrollbar p-6 bg-surface">
+<!-- Hero Index Section -->
+<section class="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-8">
+<div class="lg:col-span-8 bg-surface-container-high rounded-lg p-8 relative overflow-hidden group border border-outline-variant/10">
+<div class="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
+<div>
+<h1 class="font-headline text-on-surface-variant text-sm font-bold tracking-[0.3em] uppercase mb-2">NIFTY 50 INDEX</h1>
+<div class="flex items-baseline gap-4">
+<span class="text-5xl font-headline font-bold tracking-tight text-on-surface">22,123.45</span>
+<span class="text-secondary font-headline font-bold text-xl flex items-center">
+<span class="material-symbols-outlined text-2xl">arrow_drop_up</span>
+                                    +187.95 (0.85%)
+                                </span>
+</div>
+</div>
+<div class="mt-4 md:mt-0 flex gap-2">
+<span class="bg-surface-container-lowest px-3 py-1 rounded text-xs text-on-surface-variant border border-outline-variant/20 uppercase tracking-widest font-bold">NSE INDIA</span>
+<span class="bg-secondary/10 px-3 py-1 rounded text-xs text-secondary border border-secondary/20 uppercase tracking-widest font-bold">LIVE MARKET</span>
+</div>
+</div>
+<!-- Day performance placeholder chart -->
+<div class="h-48 w-full relative">
+<svg class="w-full h-full" preserveaspectratio="none" viewbox="0 0 1000 200">
+<defs>
+<lineargradient id="chartGradient" x1="0" x2="0" y1="0" y2="1">
+<stop offset="0%" stop-color="#a8e8ff" stop-opacity="0.2"></stop>
+<stop offset="100%" stop-color="#111318" stop-opacity="0"></stop>
+</lineargradient>
+</defs>
+<path d="M0,180 L50,175 L100,160 L150,165 L200,140 L250,130 L300,145 L350,120 L400,110 L450,115 L500,90 L550,70 L600,85 L650,60 L700,50 L750,55 L800,40 L850,30 L900,45 L950,20 L1000,10 L1000,200 L0,200 Z" fill="url(#chartGradient)"></path>
+<path d="M0,180 L50,175 L100,160 L150,165 L200,140 L250,130 L300,145 L350,120 L400,110 L450,115 L500,90 L550,70 L600,85 L650,60 L700,50 L750,55 L800,40 L850,30 L900,45 L950,20 L1000,10" fill="none" stroke="#a8e8ff" stroke-linecap="round" stroke-linejoin="round" stroke-width="3"></path>
+</svg>
+<div class="absolute inset-0 bg-gradient-to-r from-surface-container-high via-transparent to-surface-container-high opacity-40 pointer-events-none"></div>
+</div>
+</div>
+<!-- Key Indicators / Quick Stats -->
+<div class="lg:col-span-4 grid grid-cols-1 gap-4">
+<div class="bg-surface-container-high rounded-lg p-5 border border-outline-variant/10">
+<span class="text-xs text-on-surface-variant font-bold uppercase tracking-widest mb-4 block">Index Sentiment</span>
+<div class="flex items-center justify-between mb-2">
+<span class="text-sm">Technical RSI (14)</span>
+<span class="text-primary font-headline font-bold">64.2</span>
+</div>
+<div class="w-full h-2 bg-surface-container-lowest rounded-full overflow-hidden mb-6">
+<div class="h-full bg-gradient-to-r from-error via-secondary to-primary" style="width: 64.2%"></div>
+</div>
+<div class="flex items-center justify-between">
+<span class="text-sm">MACD (12,26,9)</span>
+<div class="flex items-center gap-1 text-secondary">
+<span class="material-symbols-outlined text-sm">trending_up</span>
+<span class="text-xs font-bold font-headline">BULLISH</span>
+</div>
+</div>
+</div>
+<div class="bg-surface-container-high rounded-lg p-5 border border-outline-variant/10 flex flex-col justify-between">
+<div class="flex justify-between items-start">
+<div>
+<span class="text-xs text-on-surface-variant font-bold uppercase tracking-widest mb-1 block">Day High</span>
+<span class="text-xl font-headline font-bold">22,150.30</span>
+</div>
+<div class="text-right">
+<span class="text-xs text-on-surface-variant font-bold uppercase tracking-widest mb-1 block">Day Low</span>
+<span class="text-xl font-headline font-bold opacity-60">21,980.15</span>
+</div>
+</div>
+<div class="mt-4 flex items-center justify-between text-[10px] uppercase tracking-tighter text-on-surface-variant font-bold">
+<span>Prev Close: 21,935.50</span>
+<span>Volume: 245.2M</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Middle Section: Performance and Weightage -->
+<section class="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-8">
+<!-- Constituent Performance -->
+<div class="xl:col-span-2 bg-surface-container rounded-lg p-6 border border-outline-variant/10">
+<div class="flex justify-between items-center mb-6">
+<h3 class="font-headline font-bold text-lg text-primary tracking-tight">Top Movers</h3>
+<div class="flex gap-2">
+<button class="text-xs bg-surface-container-highest px-3 py-1 rounded-full border border-outline-variant/10 hover:border-primary/40 transition-all">Gainers</button>
+<button class="text-xs opacity-40 px-3 py-1 rounded-full hover:bg-surface-container-highest transition-all">Losers</button>
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left">
+<thead>
+<tr class="text-[10px] text-on-surface-variant uppercase tracking-widest border-b border-outline-variant/10">
+<th class="pb-3 font-bold">Symbol</th>
+<th class="pb-3 font-bold">LTP</th>
+<th class="pb-3 font-bold">Change (%)</th>
+<th class="pb-3 font-bold">Market Cap</th>
+<th class="pb-3 font-bold text-right">Trend</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/5">
+<tr class="group hover:bg-surface-container-low transition-colors">
+<td class="py-4 font-headline font-bold">RELIANCE</td>
+<td class="py-4 font-label">2,945.60</td>
+<td class="py-4 text-secondary font-bold">+2.45%</td>
+<td class="py-4 text-on-surface-variant text-xs">19.82T</td>
+<td class="py-4 text-right">
+<span class="material-symbols-outlined text-secondary opacity-50 group-hover:opacity-100 transition-opacity" style="font-variation-settings: 'FILL' 1;">trending_up</span>
+</td>
+</tr>
+<tr class="group hover:bg-surface-container-low transition-colors">
+<td class="py-4 font-headline font-bold">HDFC BANK</td>
+<td class="py-4 font-label">1,452.10</td>
+<td class="py-4 text-secondary font-bold">+1.82%</td>
+<td class="py-4 text-on-surface-variant text-xs">11.02T</td>
+<td class="py-4 text-right">
+<span class="material-symbols-outlined text-secondary opacity-50 group-hover:opacity-100 transition-opacity" style="font-variation-settings: 'FILL' 1;">trending_up</span>
+</td>
+</tr>
+<tr class="group hover:bg-surface-container-low transition-colors">
+<td class="py-4 font-headline font-bold">ICICI BANK</td>
+<td class="py-4 font-label">1,085.45</td>
+<td class="py-4 text-secondary font-bold">+1.15%</td>
+<td class="py-4 text-on-surface-variant text-xs">7.62T</td>
+<td class="py-4 text-right">
+<span class="material-symbols-outlined text-secondary opacity-50 group-hover:opacity-100 transition-opacity" style="font-variation-settings: 'FILL' 1;">trending_up</span>
+</td>
+</tr>
+<tr class="group hover:bg-surface-container-low transition-colors">
+<td class="py-4 font-headline font-bold">TCS</td>
+<td class="py-4 font-label">4,120.30</td>
+<td class="py-4 text-on-tertiary-container font-bold">-0.45%</td>
+<td class="py-4 text-on-surface-variant text-xs">15.02T</td>
+<td class="py-4 text-right">
+<span class="material-symbols-outlined text-on-tertiary-container opacity-50 group-hover:opacity-100 transition-opacity" style="font-variation-settings: 'FILL' 1;">trending_down</span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Sectoral Weightage -->
+<div class="bg-surface-container rounded-lg p-6 border border-outline-variant/10">
+<h3 class="font-headline font-bold text-lg text-primary tracking-tight mb-6">Sectoral Weightage</h3>
+<div class="flex justify-center mb-8 relative">
+<div class="w-32 h-32 rounded-full border-[12px] border-primary-container/20 relative">
+<div class="absolute inset-0 border-[12px] border-primary rounded-full" style="clip-path: polygon(50% 50%, 50% 0, 100% 0, 100% 100%, 0 100%, 0 70%)"></div>
+<div class="absolute inset-0 flex flex-col items-center justify-center">
+<span class="text-xs text-on-surface-variant font-bold">TOTAL</span>
+<span class="text-sm font-bold">100%</span>
+</div>
+</div>
+</div>
+<div class="space-y-4">
+<div class="flex items-center justify-between group">
+<div class="flex items-center gap-3">
+<div class="w-2 h-2 rounded-full bg-primary"></div>
+<span class="text-sm font-medium">Financial Services</span>
+</div>
+<span class="text-sm font-headline font-bold">33.5%</span>
+</div>
+<div class="w-full h-1 bg-surface-container-lowest rounded-full mb-2">
+<div class="h-full bg-primary rounded-full" style="width: 33.5%"></div>
+</div>
+<div class="flex items-center justify-between group">
+<div class="flex items-center gap-3">
+<div class="w-2 h-2 rounded-full bg-secondary-container"></div>
+<span class="text-sm font-medium">Information Technology</span>
+</div>
+<span class="text-sm font-headline font-bold">14.2%</span>
+</div>
+<div class="w-full h-1 bg-surface-container-lowest rounded-full mb-2">
+<div class="h-full bg-secondary-container rounded-full" style="width: 14.2%"></div>
+</div>
+<div class="flex items-center justify-between group">
+<div class="flex items-center gap-3">
+<div class="w-2 h-2 rounded-full bg-tertiary-container"></div>
+<span class="text-sm font-medium">Oil, Gas &amp; Fuels</span>
+</div>
+<span class="text-sm font-headline font-bold">13.1%</span>
+</div>
+<div class="w-full h-1 bg-surface-container-lowest rounded-full mb-2">
+<div class="h-full bg-tertiary-container rounded-full" style="width: 13.1%"></div>
+</div>
+</div>
+</div>
+</section>
+<!-- Heatmap Visualization Section -->
+<section class="mb-8">
+<div class="flex justify-between items-end mb-4">
+<div>
+<h3 class="font-headline font-bold text-lg text-on-surface tracking-tight">Market Heatmap</h3>
+<p class="text-xs text-on-surface-variant">Performance distribution across the Nifty 50 constituents</p>
+</div>
+<div class="flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest">
+<div class="flex items-center gap-1"><div class="w-2 h-2 bg-on-tertiary-container"></div> -3%</div>
+<div class="flex items-center gap-1"><div class="w-2 h-2 bg-surface-container-highest"></div> 0%</div>
+<div class="flex items-center gap-1"><div class="w-2 h-2 bg-secondary"></div> +3%</div>
+</div>
+</div>
+<!-- Grid Heatmap -->
+<div class="grid grid-cols-5 md:grid-cols-10 gap-1 aspect-[16/6] md:aspect-[16/4]">
+<!-- Sample squares simulating the 50 stocks -->
+<div class="bg-secondary rounded-sm p-1 flex flex-col justify-between group cursor-help transition-all hover:ring-2 hover:ring-primary z-10" title="RELIANCE +2.45%">
+<span class="text-[8px] font-bold opacity-70">RELIANCE</span>
+<span class="text-[10px] font-bold">+2.4%</span>
+</div>
+<div class="bg-secondary/80 rounded-sm p-1 flex flex-col justify-between group cursor-help" title="HDFC +1.8%">
+<span class="text-[8px] font-bold opacity-70">HDFC</span>
+<span class="text-[10px] font-bold">+1.8%</span>
+</div>
+<div class="bg-secondary/40 rounded-sm p-1 flex flex-col justify-between group cursor-help" title="INFY +0.5%">
+<span class="text-[8px] font-bold opacity-70">INFY</span>
+<span class="text-[10px] font-bold">+0.5%</span>
+</div>
+<div class="bg-on-tertiary-container/30 rounded-sm p-1 flex flex-col justify-between group cursor-help" title="TCS -0.4%">
+<span class="text-[8px] font-bold opacity-70">TCS</span>
+<span class="text-[10px] font-bold">-0.4%</span>
+</div>
+<div class="bg-secondary rounded-sm p-1 flex flex-col justify-between group cursor-help" title="ICICI +2.1%">
+<span class="text-[8px] font-bold opacity-70">ICICI</span>
+<span class="text-[10px] font-bold">+2.1%</span>
+</div>
+<!-- Repeat squares to fill space -->
+<div class="bg-surface-container-highest rounded-sm p-1 flex flex-col justify-between group cursor-help" title="KOTAK +0.1%">
+<span class="text-[8px] font-bold opacity-70">KOTAK</span>
+<span class="text-[10px] font-bold">0.1%</span>
+</div>
+<div class="bg-secondary/60 rounded-sm p-1 flex flex-col justify-between group cursor-help" title="ITC +1.2%">
+<span class="text-[8px] font-bold opacity-70">ITC</span>
+<span class="text-[10px] font-bold">+1.2%</span>
+</div>
+<div class="bg-on-tertiary-container rounded-sm p-1 flex flex-col justify-between group cursor-help" title="L&amp;T -2.8%">
+<span class="text-[8px] font-bold opacity-70">L&amp;T</span>
+<span class="text-[10px] font-bold">-2.8%</span>
+</div>
+<div class="bg-secondary/90 rounded-sm p-1 flex flex-col justify-between group cursor-help" title="BHARTI +2.6%">
+<span class="text-[8px] font-bold opacity-70">BHARTI</span>
+<span class="text-[10px] font-bold">+2.6%</span>
+</div>
+<div class="bg-secondary/30 rounded-sm p-1 flex flex-col justify-between group cursor-help" title="SBIN +0.4%">
+<span class="text-[8px] font-bold opacity-70">SBIN</span>
+<span class="text-[10px] font-bold">+0.4%</span>
+</div>
+<!-- Filling up 2nd row -->
+<div class="bg-secondary/20 rounded-sm p-1 flex flex-col justify-between"></div>
+<div class="bg-on-tertiary-container/10 rounded-sm p-1 flex flex-col justify-between"></div>
+<div class="bg-secondary/50 rounded-sm p-1 flex flex-col justify-between"></div>
+<div class="bg-secondary/70 rounded-sm p-1 flex flex-col justify-between"></div>
+<div class="bg-surface-container-highest rounded-sm p-1 flex flex-col justify-between"></div>
+<div class="bg-secondary/10 rounded-sm p-1 flex flex-col justify-between"></div>
+<div class="bg-on-tertiary-container/40 rounded-sm p-1 flex flex-col justify-between"></div>
+<div class="bg-secondary rounded-sm p-1 flex flex-col justify-between"></div>
+<div class="bg-on-tertiary-container/80 rounded-sm p-1 flex flex-col justify-between"></div>
+<div class="bg-secondary/30 rounded-sm p-1 flex flex-col justify-between"></div>
+<!-- Filling up more for visual density -->
+<div class="bg-surface-container-highest rounded-sm p-1"></div>
+<div class="bg-secondary/40 rounded-sm p-1"></div>
+<div class="bg-secondary/60 rounded-sm p-1"></div>
+<div class="bg-on-tertiary-container/20 rounded-sm p-1"></div>
+<div class="bg-secondary/80 rounded-sm p-1"></div>
+<div class="bg-secondary/90 rounded-sm p-1"></div>
+<div class="bg-surface-container-highest rounded-sm p-1"></div>
+<div class="bg-secondary/20 rounded-sm p-1"></div>
+<div class="bg-on-tertiary-container/10 rounded-sm p-1"></div>
+<div class="bg-secondary rounded-sm p-1"></div>
+</div>
+</section>
+<!-- Bottom Detail Cards -->
+<section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+<div class="bg-surface-container rounded-lg p-5 border border-outline-variant/10">
+<span class="text-[10px] text-on-surface-variant font-bold uppercase tracking-widest block mb-4">Volume Shockers</span>
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded bg-primary/10 flex items-center justify-center text-primary font-bold">AZ</div>
+<div>
+<p class="text-sm font-bold">ADANIPORTS</p>
+<p class="text-[10px] text-secondary">3.4x Avg Volume</p>
+</div>
+</div>
+</div>
+<div class="bg-surface-container rounded-lg p-5 border border-outline-variant/10">
+<span class="text-[10px] text-on-surface-variant font-bold uppercase tracking-widest block mb-4">52W High Reach</span>
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded bg-secondary/10 flex items-center justify-center text-secondary font-bold">TM</div>
+<div>
+<p class="text-sm font-bold">TATA MOTORS</p>
+<p class="text-[10px] text-on-surface-variant">985.40 (New High)</p>
+</div>
+</div>
+</div>
+<div class="bg-surface-container rounded-lg p-5 border border-outline-variant/10">
+<span class="text-[10px] text-on-surface-variant font-bold uppercase tracking-widest block mb-4">Open Interest</span>
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded bg-tertiary/10 flex items-center justify-center text-tertiary font-bold">AL</div>
+<div>
+<p class="text-sm font-bold">AXISBANK</p>
+<p class="text-[10px] text-on-tertiary-container">+12.4% Unwinding</p>
+</div>
+</div>
+</div>
+<div class="bg-surface-container rounded-lg p-5 border border-outline-variant/10">
+<span class="text-[10px] text-on-surface-variant font-bold uppercase tracking-widest block mb-4">Market Breath</span>
+<div class="flex items-center justify-center gap-4 h-full">
+<div class="text-center">
+<span class="text-lg font-headline font-bold text-secondary">34</span>
+<p class="text-[8px] opacity-50 uppercase">Adv</p>
+</div>
+<div class="text-center">
+<span class="text-lg font-headline font-bold opacity-30">2</span>
+<p class="text-[8px] opacity-50 uppercase">Flat</p>
+</div>
+<div class="text-center">
+<span class="text-lg font-headline font-bold text-on-tertiary-container">14</span>
+<p class="text-[8px] opacity-50 uppercase">Dec</p>
+</div>
+</div>
+</div>
+</section>
+</main>
+</div>
+<!-- Mobile Navigation Shell -->
+<div class="md:hidden fixed bottom-0 left-0 w-full bg-[#111318] flex justify-around items-center h-16 border-t border-outline-variant/10 z-50">
+<button class="flex flex-col items-center gap-1 text-[#a8e8ff]">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="text-[10px]">Home</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-[#e2e2e8] opacity-70">
+<span class="material-symbols-outlined">analytics</span>
+<span class="text-[10px]">Analysis</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-[#e2e2e8] opacity-70">
+<span class="material-symbols-outlined">visibility</span>
+<span class="text-[10px]">Watchlist</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-[#e2e2e8] opacity-70">
+<span class="material-symbols-outlined">person</span>
+<span class="text-[10px]">Profile</span>
+</button>
+</div>
+</body></html>

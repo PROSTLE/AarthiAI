@@ -116,7 +116,7 @@ function startRazorpayPayment() {
     key: 'rzp_test_SDdi0bRwia1AA4',
     amount: amountInPaise,
     currency: 'INR',
-    name: 'StockSense Wallet',
+    name: 'AarthiAI Wallet',
     description: 'Add Money to Wallet',
     handler: function (response) {
       verifyAndCreditWallet(response.razorpay_payment_id, parseFloat(amt));
@@ -233,7 +233,16 @@ let activeTimeframe = "1d";
 let loadVersion = 0;
 
 
+
 let searchTimeout = null;
+
+// Forecast tab switcher (Stitch UI)
+function switchForecastTab(el, tab) {
+  document.querySelectorAll(".forecast-tab").forEach(t => t.classList.remove("active"));
+  el.classList.add("active");
+  // Future: load different forecast data sets based on tab
+}
+
 
 document.addEventListener("DOMContentLoaded", () => {
   loadHighPotential();
@@ -338,17 +347,25 @@ async function loadMarketIndices() {
 
 
 function switchTab(tab) {
-  document.querySelectorAll(".nav-tab").forEach((t) => t.classList.remove("active"));
-  document.querySelectorAll(".tab-content").forEach((t) => t.classList.add("hidden"));
+  switchMainView(tab);
+}
+
+function switchMainView(tab) {
+  const chartsView = document.getElementById("chartsView");
+  const tradingView = document.getElementById("tradingView");
+  if (!chartsView || !tradingView) return;
 
   if (tab === "charts") {
-    document.getElementById("chartsTab").classList.remove("hidden");
-    document.querySelectorAll(".nav-tab")[0].classList.add("active");
+    chartsView.classList.remove("hidden");
+    tradingView.classList.add("hidden");
   } else {
-    document.getElementById("tradingTab").classList.remove("hidden");
-    document.querySelectorAll(".nav-tab")[1].classList.add("active");
+    tradingView.classList.remove("hidden");
+    chartsView.classList.add("hidden");
     loadPortfolio();
   }
+
+  // Update sidenav active state
+  document.querySelectorAll(".sidenav-link").forEach(link => link.classList.remove("active"));
 }
 
 

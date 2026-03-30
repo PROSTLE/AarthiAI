@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>KINETIC TERMINAL - Company Intelligence</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;family=Inter:wght@300;400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              colors: {
+                "surface-bright": "#37393e",
+                "error": "#ffb4ab",
+                "on-surface": "#e2e2e8",
+                "surface-dim": "#111318",
+                "on-tertiary-fixed-variant": "#920021",
+                "secondary-fixed": "#69ff87",
+                "primary-fixed-dim": "#3cd7ff",
+                "outline-variant": "#3c494e",
+                "surface-container-lowest": "#0c0e12",
+                "surface-container": "#1e2024",
+                "tertiary-fixed-dim": "#ffb3b3",
+                "tertiary-fixed": "#ffdad9",
+                "on-secondary-container": "#004d1b",
+                "on-error": "#690005",
+                "secondary-fixed-dim": "#3ce36a",
+                "secondary": "#40e56c",
+                "on-error-container": "#ffdad6",
+                "on-background": "#e2e2e8",
+                "on-tertiary-container": "#a30026",
+                "secondary-container": "#02c953",
+                "on-surface-variant": "#bbc9cf",
+                "on-secondary": "#003912",
+                "inverse-surface": "#e2e2e8",
+                "on-tertiary": "#680014",
+                "primary-fixed": "#b4ebff",
+                "on-primary-container": "#00586b",
+                "on-secondary-fixed-variant": "#00531e",
+                "primary-container": "#00d4ff",
+                "on-secondary-fixed": "#002108",
+                "inverse-primary": "#00677e",
+                "error-container": "#93000a",
+                "tertiary-container": "#ffadad",
+                "on-primary-fixed-variant": "#004e5f",
+                "surface": "#111318",
+                "on-tertiary-fixed": "#400009",
+                "surface-container-highest": "#333539",
+                "background": "#111318",
+                "surface-container-low": "#1a1c20",
+                "on-primary": "#003642",
+                "primary": "#a8e8ff",
+                "inverse-on-surface": "#2f3035",
+                "tertiary": "#ffd4d3",
+                "surface-container-high": "#282a2e",
+                "surface-tint": "#3cd7ff",
+                "outline": "#859398",
+                "surface-variant": "#333539",
+                "on-primary-fixed": "#001f27"
+              },
+              fontFamily: {
+                "headline": ["Space Grotesk"],
+                "body": ["Inter"],
+                "label": ["Inter"]
+              },
+              borderRadius: {"DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px"},
+            },
+          },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-panel {
+            background: rgba(51, 53, 57, 0.6);
+            backdrop-filter: blur(20px);
+        }
+        .kinetic-gradient {
+            background: linear-gradient(135deg, #a8e8ff 0%, #00d4ff 100%);
+        }
+        .scroll-hide::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
+</head>
+<body class="bg-surface font-body text-on-surface selection:bg-primary/30">
+<!-- TopNavBar -->
+<nav class="fixed top-0 w-full h-16 bg-[#111318] border-b border-white/5 flex items-center justify-between px-6 z-50 font-['Space_Grotesk'] text-sm tracking-tight">
+<div class="flex items-center gap-8">
+<span class="text-2xl font-bold tracking-tighter text-[#a8e8ff]">KINETIC</span>
+<div class="hidden md:flex items-center gap-6">
+<a class="text-[#a8e8ff] font-bold border-b-2 border-[#a8e8ff] py-5" href="#">Analysis</a>
+<a class="text-[#e2e2e8]/60 hover:bg-[#333539] transition-colors duration-200 px-2 py-1 rounded" href="#">Markets</a>
+<a class="text-[#e2e2e8]/60 hover:bg-[#333539] transition-colors duration-200 px-2 py-1 rounded" href="#">Terminal</a>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative hidden sm:block">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#e2e2e8]/40">search</span>
+<input class="bg-surface-container-lowest border-none rounded py-1.5 pl-10 pr-4 text-sm w-64 focus:ring-1 focus:ring-primary" placeholder="Search RELIANCE..." type="text"/>
+</div>
+<div class="flex gap-2">
+<button class="p-2 text-[#e2e2e8]/60 hover:bg-[#333539] rounded transition-colors duration-200">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="p-2 text-[#e2e2e8]/60 hover:bg-[#333539] rounded transition-colors duration-200">
+<span class="material-symbols-outlined" data-icon="account_circle">account_circle</span>
+</button>
+</div>
+</div>
+</nav>
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-16 h-[calc(100vh-64px)] w-64 bg-[#1a1c20] border-r border-white/5 flex flex-col py-4 z-40 font-['Space_Grotesk'] font-medium antialiased">
+<div class="px-6 mb-8">
+<h2 class="text-[#00d4ff] text-xs tracking-widest uppercase opacity-50">Intelligence Unit</h2>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center gap-3 px-6 py-3 text-[#e2e2e8]/70 hover:text-[#a8e8ff] hover:bg-[#111318] transition-all duration-300" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span>Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-6 py-3 text-[#e2e2e8]/70 hover:text-[#a8e8ff] hover:bg-[#111318] transition-all duration-300" href="#">
+<span class="material-symbols-outlined" data-icon="visibility">visibility</span>
+<span>Watchlist</span>
+</a>
+<a class="flex items-center gap-3 px-6 py-3 bg-[#333539] text-[#a8e8ff] rounded-r-full border-l-4 border-[#00d4ff] transition-all duration-300 translate-x-1" href="#">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+<span>Analysis</span>
+</a>
+<a class="flex items-center gap-3 px-6 py-3 text-[#e2e2e8]/70 hover:text-[#a8e8ff] hover:bg-[#111318] transition-all duration-300" href="#">
+<span class="material-symbols-outlined" data-icon="receipt_long">receipt_long</span>
+<span>Orders</span>
+</a>
+<a class="flex items-center gap-3 px-6 py-3 text-[#e2e2e8]/70 hover:text-[#a8e8ff] hover:bg-[#111318] transition-all duration-300" href="#">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+<span>History</span>
+</a>
+</nav>
+<div class="mt-auto border-t border-white/5 pt-4 space-y-1">
+<a class="flex items-center gap-3 px-6 py-3 text-[#e2e2e8]/70 hover:text-[#a8e8ff] hover:bg-[#111318] transition-all duration-300" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span>Settings</span>
+</a>
+<a class="flex items-center gap-3 px-6 py-3 text-[#e2e2e8]/70 hover:text-[#a8e8ff] hover:bg-[#111318] transition-all duration-300" href="#">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+<span>Logout</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="ml-64 mt-16 p-8 min-h-screen">
+<!-- Header Section -->
+<header class="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-10">
+<div>
+<div class="flex items-center gap-3 mb-2">
+<span class="bg-primary/10 text-primary px-2 py-0.5 rounded text-xs font-bold font-headline tracking-widest uppercase">NSE: RELIANCE</span>
+<span class="text-on-surface-variant text-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-sm" data-icon="verified">verified</span>
+                        NIFTY 50 Bluechip
+                    </span>
+</div>
+<h1 class="text-5xl font-extrabold font-headline tracking-tighter text-on-surface">RELIANCE INDUSTRIES LTD.</h1>
+<p class="text-on-surface-variant mt-2 max-w-2xl font-light leading-relaxed">Energy-to-telecom conglomerate. Strategic dominance in refining, retail, and digital services across the Indian subcontinent.</p>
+</div>
+<div class="text-right">
+<div class="text-3xl font-headline font-bold text-secondary">₹2,945.60 <span class="text-sm font-normal text-secondary/70">+1.24%</span></div>
+<div class="text-on-surface-variant text-xs mt-1 uppercase tracking-widest">Market Cap: ₹19.85 Trillion</div>
+</div>
+</header>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-12 gap-6">
+<!-- 1. Assets Held (Interactive Modules) -->
+<section class="col-span-12 lg:col-span-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+<div class="bg-surface-container p-6 rounded-lg group hover:bg-surface-container-high transition-colors">
+<div class="flex justify-between items-start mb-4">
+<span class="material-symbols-outlined text-primary" data-icon="factory">factory</span>
+<span class="text-[10px] text-on-surface-variant font-headline uppercase">Fixed Assets</span>
+</div>
+<div class="text-2xl font-headline font-bold mb-1">₹7.42T</div>
+<p class="text-xs text-on-surface-variant">Refineries, Retail Outlets, Jio Infrastructure</p>
+<div class="mt-4 w-full bg-surface-container-lowest h-1 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-[85%]"></div>
+</div>
+</div>
+<div class="bg-surface-container p-6 rounded-lg group hover:bg-surface-container-high transition-colors">
+<div class="flex justify-between items-start mb-4">
+<span class="material-symbols-outlined text-primary" data-icon="account_balance">account_balance</span>
+<span class="text-[10px] text-on-surface-variant font-headline uppercase">Investments</span>
+</div>
+<div class="text-2xl font-headline font-bold mb-1">₹3.89T</div>
+<p class="text-xs text-on-surface-variant">Strategic stakes, bonds, and global ventures</p>
+<div class="mt-4 w-full bg-surface-container-lowest h-1 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-[60%]"></div>
+</div>
+</div>
+<div class="bg-surface-container p-6 rounded-lg group hover:bg-surface-container-high transition-colors">
+<div class="flex justify-between items-start mb-4">
+<span class="material-symbols-outlined text-primary" data-icon="payments">payments</span>
+<span class="text-[10px] text-on-surface-variant font-headline uppercase">Cash Reserves</span>
+</div>
+<div class="text-2xl font-headline font-bold mb-1">₹1.22T</div>
+<p class="text-xs text-on-surface-variant">Highly liquid assets &amp; cash equivalents</p>
+<div class="mt-4 w-full bg-surface-container-lowest h-1 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-[35%]"></div>
+</div>
+</div>
+</section>
+<!-- 2. Past Performance (Main Chart Area) -->
+<section class="col-span-12 lg:col-span-8 bg-surface-container-low p-8 rounded-xl relative overflow-hidden">
+<div class="flex items-center justify-between mb-8 relative z-10">
+<div>
+<h3 class="font-headline text-lg font-bold">5-Year Growth Trajectory</h3>
+<p class="text-xs text-on-surface-variant">Consolidated Revenue vs. PAT (Profit After Tax)</p>
+</div>
+<div class="flex gap-2">
+<button class="px-3 py-1 bg-surface-container-highest text-[10px] font-bold rounded uppercase tracking-widest text-primary">Revenue</button>
+<button class="px-3 py-1 text-[10px] font-bold rounded uppercase tracking-widest text-on-surface-variant hover:text-on-surface">Profit</button>
+</div>
+</div>
+<div class="h-64 flex items-end justify-between gap-4 relative z-10">
+<!-- Fake Chart Visual -->
+<div class="flex-1 flex flex-col items-center gap-2 group">
+<div class="w-full bg-surface-container-highest rounded-t-sm h-[30%] group-hover:bg-primary/40 transition-all duration-500"></div>
+<span class="text-[10px] font-headline text-on-surface-variant">FY20</span>
+</div>
+<div class="flex-1 flex flex-col items-center gap-2 group">
+<div class="w-full bg-surface-container-highest rounded-t-sm h-[45%] group-hover:bg-primary/40 transition-all duration-500"></div>
+<span class="text-[10px] font-headline text-on-surface-variant">FY21</span>
+</div>
+<div class="flex-1 flex flex-col items-center gap-2 group">
+<div class="w-full bg-surface-container-highest rounded-t-sm h-[60%] group-hover:bg-primary/40 transition-all duration-500"></div>
+<span class="text-[10px] font-headline text-on-surface-variant">FY22</span>
+</div>
+<div class="flex-1 flex flex-col items-center gap-2 group">
+<div class="w-full bg-surface-container-highest rounded-t-sm h-[75%] group-hover:bg-primary/40 transition-all duration-500"></div>
+<span class="text-[10px] font-headline text-on-surface-variant">FY23</span>
+</div>
+<div class="flex-1 flex flex-col items-center gap-2 group">
+<div class="w-full kinetic-gradient rounded-t-sm h-[95%]"></div>
+<span class="text-[10px] font-headline text-on-surface font-bold">FY24</span>
+</div>
+</div>
+<!-- Background Decorative Gradient -->
+<div class="absolute inset-0 bg-gradient-to-t from-primary/5 to-transparent pointer-events-none"></div>
+</section>
+<!-- 3. Future Targets & Decisions (Sidebar Perspective) -->
+<section class="col-span-12 lg:col-span-4 space-y-6">
+<!-- Analyst Consensus -->
+<div class="bg-surface-container-high p-6 rounded-xl border-l-4 border-secondary">
+<h3 class="font-headline text-sm font-bold mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary" data-icon="target">track_changes</span>
+                        ANALYST CONSENSUS
+                    </h3>
+<div class="flex items-center justify-between mb-4">
+<div class="text-4xl font-headline font-bold">₹3,250</div>
+<div class="bg-secondary/10 text-secondary text-[10px] px-2 py-1 rounded font-bold uppercase">10.3% Upside</div>
+</div>
+<div class="space-y-3">
+<div class="flex justify-between text-xs">
+<span class="text-on-surface-variant">Strong Buy</span>
+<span class="font-bold">28/35 Analysts</span>
+</div>
+<div class="w-full bg-surface-container-lowest h-1.5 rounded-full">
+<div class="bg-secondary h-full w-[80%] rounded-full"></div>
+</div>
+</div>
+</div>
+<!-- Recent Board Decisions -->
+<div class="bg-surface-container-low p-6 rounded-xl border-l-4 border-primary">
+<h3 class="font-headline text-sm font-bold mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" data-icon="gavel">gavel</span>
+                        KEY DECISIONS
+                    </h3>
+<div class="space-y-4">
+<div class="border-b border-white/5 pb-3">
+<div class="text-[10px] text-primary font-headline uppercase tracking-tighter mb-1">Feb 2024</div>
+<div class="text-sm font-medium">Strategic Demerger of Financial Services entity finalized.</div>
+</div>
+<div class="border-b border-white/5 pb-3">
+<div class="text-[10px] text-primary font-headline uppercase tracking-tighter mb-1">Jan 2024</div>
+<div class="text-sm font-medium">₹75,000 Cr investment approved for Green Energy Giga Complex.</div>
+</div>
+</div>
+</div>
+</section>
+<!-- 4. Related Companies & Subsidiaries -->
+<section class="col-span-12 lg:col-span-8">
+<div class="flex items-center justify-between mb-6">
+<h3 class="font-headline text-lg font-bold">Ecosystem &amp; Subsidiaries</h3>
+<a class="text-xs text-primary flex items-center gap-1 hover:underline" href="#">
+                        View Hierarchy <span class="material-symbols-outlined text-xs">arrow_forward</span>
+</a>
+</div>
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+<div class="bg-surface-container p-4 rounded-lg flex flex-col items-center text-center hover:translate-y-[-2px] transition-transform">
+<div class="w-12 h-12 bg-surface-container-highest rounded-full flex items-center justify-center mb-3">
+<span class="material-symbols-outlined text-primary">router</span>
+</div>
+<div class="text-sm font-bold">Jio Platforms</div>
+<div class="text-[10px] text-on-surface-variant">Digital Services</div>
+</div>
+<div class="bg-surface-container p-4 rounded-lg flex flex-col items-center text-center hover:translate-y-[-2px] transition-transform">
+<div class="w-12 h-12 bg-surface-container-highest rounded-full flex items-center justify-center mb-3">
+<span class="material-symbols-outlined text-primary">shopping_bag</span>
+</div>
+<div class="text-sm font-bold">Reliance Retail</div>
+<div class="text-[10px] text-on-surface-variant">Consumer Goods</div>
+</div>
+<div class="bg-surface-container p-4 rounded-lg flex flex-col items-center text-center hover:translate-y-[-2px] transition-transform">
+<div class="w-12 h-12 bg-surface-container-highest rounded-full flex items-center justify-center mb-3">
+<span class="material-symbols-outlined text-primary">bolt</span>
+</div>
+<div class="text-sm font-bold">Reliance New Energy</div>
+<div class="text-[10px] text-on-surface-variant">Renewables</div>
+</div>
+<div class="bg-surface-container p-4 rounded-lg flex flex-col items-center text-center hover:translate-y-[-2px] transition-transform">
+<div class="w-12 h-12 bg-surface-container-highest rounded-full flex items-center justify-center mb-3">
+<span class="material-symbols-outlined text-primary">live_tv</span>
+</div>
+<div class="text-sm font-bold">Network18</div>
+<div class="text-[10px] text-on-surface-variant">Media &amp; Ent.</div>
+</div>
+</div>
+</section>
+<!-- 5. Key Financial Ratios (Dense Terminal Display) -->
+<section class="col-span-12 lg:col-span-4 bg-surface-container-lowest p-6 rounded-xl border border-white/5 font-['Space_Grotesk']">
+<h3 class="text-xs font-bold text-on-surface-variant mb-6 flex items-center justify-between">
+<span>FINANCIAL VITALS</span>
+<span class="text-primary opacity-50">LATEST_TILING</span>
+</h3>
+<div class="space-y-5">
+<div class="flex justify-between items-end border-b border-white/5 pb-2">
+<span class="text-on-surface-variant text-sm tracking-tight">Price to Earnings (P/E)</span>
+<span class="text-lg font-bold">26.84</span>
+</div>
+<div class="flex justify-between items-end border-b border-white/5 pb-2">
+<span class="text-on-surface-variant text-sm tracking-tight">Debt to Equity</span>
+<span class="text-lg font-bold">0.38</span>
+</div>
+<div class="flex justify-between items-end border-b border-white/5 pb-2">
+<span class="text-on-surface-variant text-sm tracking-tight">Return on Equity (ROE)</span>
+<span class="text-lg font-bold text-secondary">9.24%</span>
+</div>
+<div class="flex justify-between items-end border-b border-white/5 pb-2">
+<span class="text-on-surface-variant text-sm tracking-tight">Dividend Yield</span>
+<span class="text-lg font-bold">0.34%</span>
+</div>
+<div class="flex justify-between items-end border-b border-white/5 pb-2">
+<span class="text-on-surface-variant text-sm tracking-tight">Current Ratio</span>
+<span class="text-lg font-bold">1.12</span>
+</div>
+<div class="flex justify-between items-end border-b border-white/5 pb-2">
+<span class="text-on-surface-variant text-sm tracking-tight">Beta (5Y)</span>
+<span class="text-lg font-bold">1.04</span>
+</div>
+</div>
+<div class="mt-8 flex gap-4">
+<button class="flex-1 kinetic-gradient text-on-primary py-2.5 rounded text-xs font-bold uppercase tracking-widest shadow-lg shadow-primary/20">Execute Order</button>
+<button class="px-4 py-2.5 bg-surface-container-highest border border-white/10 rounded text-xs font-bold uppercase tracking-widest hover:bg-surface-bright transition-colors">Alerts</button>
+</div>
+</section>
+</div>
+<!-- Footer / Technical Specs -->
+<footer class="mt-20 pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4 text-[10px] text-on-surface-variant uppercase tracking-widest">
+<div class="flex gap-8">
+<span>Latency: 4ms</span>
+<span>Feed: NSE Real-time</span>
+<span>Security: AES-256</span>
+</div>
+<div class="flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+                Terminal Connected - v4.2.0-STABLE
+            </div>
+</footer>
+</main>
+<!-- Contextual FAB - Suppression Logic: Suppressed on Details pages per instructions -->
+</body></html>
