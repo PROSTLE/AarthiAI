@@ -1,0 +1,3 @@
+# Enterprise ML ensemble (40% of prediction blend)
+h2o>=3.42.0
+datarobot>=3.6.0

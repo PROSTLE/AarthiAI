@@ -1,0 +1,13 @@
+services:
+  stocksense-app:
+    build: .
+    container_name: stocksense-container
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount the portfolio.json so it persists outside the container
+      - ./backend/portfolio.json:/app/backend/portfolio.json
+    environment:
+      - PYTHONUNBUFFERED=1
+      - GEMINI_API_KEY=AIzaSyCr7849tRiFislGvZhJZqCT8PcFu11RGpo
+    restart: unless-stopped

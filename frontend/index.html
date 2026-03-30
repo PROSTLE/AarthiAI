@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>StockSense AI — Live Trading Dashboard</title>
+  <link rel="stylesheet" href="style.css?v=6" />
+  <!-- Razorpay Checkout Script -->
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>
+</head>
+
+<body>
+
+  <!-- Wallet Panel — Premium Slide-in -->
+  <div id="walletPanel" class="wallet-panel hidden">
+    <div class="wallet-panel-content">
+      <span class="wallet-close" onclick="closeWallet()">&times;</span>
+
+      <!-- Header -->
+      <div class="wallet-header">
+        <div class="wallet-header-icon">💰</div>
+        <h2>My Wallet</h2>
+        <p class="wallet-subtitle">Synced with AutoBot Balance</p>
+      </div>
+
+      <!-- Balance Card -->
+      <div class="wallet-balance-card">
+        <div class="wallet-balance-label">Available Balance</div>
+        <div class="wallet-balance-amount" id="walletBalance">₹10,00,000.00</div>
+        <div class="wallet-balance-bar"></div>
+      </div>
+
+      <!-- Quick Add Buttons -->
+      <div class="wallet-quick-add">
+        <span class="wallet-quick-label">Quick Add</span>
+        <div class="wallet-quick-btns">
+          <button onclick="quickAdd(500)">₹500</button>
+          <button onclick="quickAdd(1000)">₹1,000</button>
+          <button onclick="quickAdd(5000)">₹5,000</button>
+          <button onclick="quickAdd(10000)">₹10,000</button>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="wallet-actions">
+        <button class="wallet-action-btn add" onclick="showAddMoney()">
+          <span class="action-icon">＋</span> Add Money
+        </button>
+        <button class="wallet-action-btn withdraw" onclick="showWithdrawMoney()">
+          <span class="action-icon">↗</span> Withdraw
+        </button>
+      </div>
+
+      <!-- Dynamic Form Area -->
+      <div id="walletActionArea"></div>
+
+      <!-- Status Message -->
+      <div id="walletMessage" class="wallet-message hidden"></div>
+
+      <!-- Transaction History -->
+      <div class="wallet-txn-section">
+        <h4>Recent Transactions</h4>
+        <div id="walletTxnList" class="wallet-txn-list">
+          <div class="wallet-txn-empty">No transactions yet</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ═══════ Trade Panel — Premium Full Slide-in ═══════ -->
+  <div id="tradePanel" class="trade-panel-overlay hidden">
+    <div class="trade-panel-content">
+      <span class="trade-panel-close" onclick="closeTradePanel()">&times;</span>
+
+      <!-- Tab Bar -->
+      <div class="trade-panel-tabs">
+        <button class="tp-tab active" onclick="switchTradeTab('search')" data-tab="search">🔍 Trade</button>
+        <button class="tp-tab" onclick="switchTradeTab('holdings')" data-tab="holdings">📂 Holdings</button>
+        <button class="tp-tab" onclick="switchTradeTab('history')" data-tab="history">📋 History</button>
+        <button class="tp-tab" onclick="switchTradeTab('watchlist')" data-tab="watchlist">⭐ Watchlist</button>
+      </div>
+
+      <!-- Search & Trade Tab -->
+      <div class="tp-tab-content" id="tpSearchTab">
+        <div class="tp-search-wrap">
+          <input type="text" id="tradeSearchInput" placeholder="Search stock… (e.g. Reliance, TCS, INFY)"
+            spellcheck="false" autocomplete="off" />
+          <div class="tp-search-dropdown hidden" id="tradeSearchDropdown"></div>
+        </div>
+
+        <!-- Selected Stock Info -->
+        <div class="tp-stock-card hidden" id="tpStockCard">
+          <div class="tp-stock-header">
+            <div>
+              <h3 id="tpStockName">—</h3>
+              <span class="tp-stock-ticker" id="tpStockTicker">—</span>
+            </div>
+            <div class="tp-stock-price-area">
+              <span class="tp-stock-price" id="tpStockPrice">₹0.00</span>
+              <span class="tp-stock-change" id="tpStockChange">0.00%</span>
+            </div>
+          </div>
+
+          <div class="tp-market-badge" id="tpMarketBadge">
+            <span class="dot"></span> <span id="tpMarketStatus">LIVE</span>
+          </div>
+
+          <!-- Buy / Sell Form -->
+          <div class="tp-action-area">
+            <div class="tp-action-tabs">
+              <button class="tp-action-btn active" id="tpBuyBtn" onclick="setTradeAction('buy')">BUY</button>
+              <button class="tp-action-btn sell" id="tpSellBtn" onclick="setTradeAction('sell')">SELL</button>
+            </div>
+            <div class="tp-form">
+              <label>Quantity</label>
+              <input type="number" id="tpQuantity" placeholder="Enter shares" min="1" value="1" />
+              <div class="tp-order-summary">
+                <div class="tp-summary-row"><span>Price</span><span id="tpSummaryPrice">₹0.00</span></div>
+                <div class="tp-summary-row"><span>Quantity</span><span id="tpSummaryQty">1</span></div>
+                <div class="tp-summary-row total"><span>Order Value</span><span id="tpSummaryTotal">₹0.00</span></div>
+                <div class="tp-summary-row"><span>Wallet Balance</span><span id="tpSummaryBalance">₹0.00</span></div>
+              </div>
+              <button class="tp-execute-btn" id="tpExecuteBtn" onclick="executeTradeFromPanel()">⚡ Place BUY
+                Order</button>
+            </div>
+          </div>
+
+          <!-- Add to Watchlist -->
+          <button class="tp-watchlist-btn" id="tpWatchlistBtn" onclick="toggleWatchlistFromPanel()">⭐ Add to
+            Watchlist</button>
+        </div>
+      </div>
+
+      <!-- Holdings Tab -->
+      <div class="tp-tab-content hidden" id="tpHoldingsTab">
+        <div id="tpHoldingsList" class="tp-holdings-list">
+          <div class="tp-empty">No holdings yet</div>
+        </div>
+      </div>
+
+      <!-- History Tab -->
+      <div class="tp-tab-content hidden" id="tpHistoryTab">
+        <div id="tpHistoryList" class="tp-history-list">
+          <div class="tp-empty">No trade history</div>
+        </div>
+      </div>
+
+      <!-- Watchlist Tab -->
+      <div class="tp-tab-content hidden" id="tpWatchlistTab">
+        <div id="tpWatchlistList" class="tp-watchlist-list">
+          <div class="tp-empty">Your watchlist is empty. Add stocks from the Trade tab.</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+
+  <nav class="topbar">
+    <div class="brand">📈 <span>StockSense AI</span></div>
+    <div class="search-area">
+      <div class="search-wrapper">
+        <input id="tickerInput" type="text" placeholder="Search stock… (e.g. Tata, Reliance, INFY)" spellcheck="false"
+          autocomplete="off" />
+        <div class="search-dropdown hidden" id="searchDropdown"></div>
+      </div>
+      <button id="analyzeBtn" onclick="loadTicker()">Analyze</button>
+    </div>
+    <div class="nav-tabs">
+      <button class="nav-tab active" onclick="switchTab('charts')">📊 Charts</button>
+      <button class="nav-tab" onclick="switchTab('trading')">🤖 Auto Trade</button>
+      <button class="btn-wallet nav-btn" onclick="showWallet()">💰 Wallet</button>
+      <button class="btn-trade nav-btn" onclick="openTradePanel()">🛒 Trade</button>
+    </div>
+    <div class="live-badge live" id="liveBadge" title="Indian market hours: 9:15 AM – 3:30 PM IST">
+      <span class="dot"></span>
+      <span id="liveBadgeText">LIVE</span>
+    </div>
+  </nav>
+
+  <div class="market-bar" id="marketBar">
+    <div class="market-bar-inner">
+      <div class="market-item" id="mktStock">
+        <span class="mkt-label" id="mktStockLabel">STOCK</span>
+        <span class="mkt-price" id="mktStockPrice">—</span>
+        <span class="mkt-change" id="mktStockChange">—</span>
+      </div>
+      <div class="market-sep">│</div>
+      <div class="market-item">
+        <span class="mkt-label">NIFTY 50</span>
+        <span class="mkt-price" id="mktNiftyPrice">—</span>
+        <span class="mkt-change" id="mktNiftyChange">—</span>
+      </div>
+      <div class="market-sep">│</div>
+      <div class="market-item">
+        <span class="mkt-label">SENSEX</span>
+        <span class="mkt-price" id="mktSensexPrice">—</span>
+        <span class="mkt-change" id="mktSensexChange">—</span>
+      </div>
+    </div>
+  </div>
+
+
+  <section class="price-banner hidden" id="priceBanner">
+    <div class="price-main">
+      <h1 id="bannerName">—</h1>
+      <span class="price-value" id="bannerPrice">0.00</span>
+      <span class="price-change" id="bannerChange">0.00 (0.00%)</span>
+    </div>
+    <div class="price-stats">
+      <div><label>Open</label><span id="statOpen">—</span></div>
+      <div><label>High</label><span id="statHigh">—</span></div>
+      <div><label>Low</label><span id="statLow">—</span></div>
+      <div><label>Vol</label><span id="statVol">—</span></div>
+      <div><label>52W H</label><span id="stat52H">—</span></div>
+      <div><label>52W L</label><span id="stat52L">—</span></div>
+    </div>
+  </section>
+
+
+  <div id="chartsTab" class="tab-content">
+    <div class="dashboard">
+      <div class="chart-area">
+        <div class="timeframe-bar">
+          <button class="tf-btn active" data-tf="1d">1D</button>
+          <button class="tf-btn" data-tf="5d">5D</button>
+          <button class="tf-btn" data-tf="1mo">1M</button>
+          <button class="tf-btn" data-tf="3mo">3M</button>
+          <button class="tf-btn" data-tf="1y">1Y</button>
+          <button class="tf-btn" data-tf="2y">2Y</button>
+        </div>
+        <div class="chart-container" id="mainChartWrap">
+          <canvas id="mainChart"></canvas>
+          <button class="chart-trade-btn" id="mainChartTradeBtn" onclick="openTradePanel(currentTicker)"
+            title="Trade this stock">🛒 Trade</button>
+          <div class="chart-empty-state" id="chartEmptyState">
+            <div class="empty-icon">📈</div>
+            <h3>Explore Any Stock</h3>
+            <p>Search for a stock above or pick one from <strong>High Potential Stocks</strong> to view charts, analysis
+              & AI insights.</p>
+            <div class="empty-hint">Try: <span
+                onclick="document.getElementById('tickerInput').focus()">RELIANCE.NS</span> · <span
+                onclick="document.getElementById('tickerInput').focus()">TCS.NS</span> · <span
+                onclick="document.getElementById('tickerInput').focus()">TATAMOTORS.NS</span></div>
+          </div>
+        </div>
+        <div class="chart-container volume-chart"><canvas id="volumeChart"></canvas></div>
+
+        <div class="prediction-section hidden" id="predSection">
+          <h3>🤖 Next 5-Day Price Forecast</h3>
+
+          <div class="pred-loader" id="predLoader">
+            <div class="pred-loader-inner">
+              <div class="neural-dots">
+                <span></span><span></span><span></span><span></span><span></span>
+              </div>
+              <div class="loader-brain">🧠</div>
+              <p class="loader-title">Generating Graph</p>
+              <p class="loader-sub" id="predLoaderMsg">Analyzing patterns with 10-feature LSTM...</p>
+              <div class="loader-bar">
+                <div class="loader-bar-fill"></div>
+              </div>
+            </div>
+          </div>
+          <div class="chart-container" id="predChartWrap">
+            <canvas id="predChart"></canvas>
+            <button class="chart-trade-btn" onclick="openTradePanel(currentTicker)" title="Trade this stock">🛒
+              Trade</button>
+          </div>
+          <div class="pred-metrics">
+            <div class="metric-card">
+              <span class="m-label">Confidence</span>
+              <span class="m-value" id="predConf">—</span>
+            </div>
+            <div class="metric-card">
+              <span class="m-label">Risk Level</span>
+              <span class="m-value" id="predRisk">—</span>
+            </div>
+            <div class="metric-card">
+              <span class="m-label">Day 1 Forecast</span>
+              <span class="m-value" id="predDay1">—</span>
+            </div>
+            <div class="metric-card">
+              <span class="m-label">Day 5 Forecast</span>
+              <span class="m-value" id="predDay5">—</span>
+            </div>
+          </div>
+          <!-- Factor Breakdown -->
+          <div class="factor-breakdown hidden" id="factorBreakdown">
+            <h4 class="factor-title">📊 Prediction Factor Breakdown</h4>
+            <div class="factor-list" id="factorList"></div>
+            <div class="llm-insight hidden" id="llmInsight">
+              <span class="llm-icon">🤖</span>
+              <span class="llm-text" id="llmReasoningText"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <aside class="sidebar">
+        <div class="panel">
+          <h3>🔥 High Potential Stocks</h3>
+          <p class="panel-sub">Ranked by momentum + indicators</p>
+          <div id="hpLoader" class="mini-loader">Loading scanner...</div>
+          <div id="hpList" class="hp-list"></div>
+        </div>
+        <div class="panel hidden" id="sentPanel">
+          <h3>📰 News Sentiment</h3>
+          <div class="sent-gauge">
+            <div class="gauge-circle" id="gaugeCircle"><span id="gaugeText">—</span></div>
+            <span class="gauge-label" id="gaugeLabel">Neutral</span>
+          </div>
+          <ul id="sentList" class="sent-list"></ul>
+        </div>
+        <div class="panel hidden" id="indPanel">
+          <h3>📊 Technical Indicators</h3>
+          <table class="ind-table">
+            <tbody id="indBody"></tbody>
+          </table>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+
+  <div id="tradingTab" class="tab-content hidden">
+    <div class="trading-dashboard">
+
+
+      <div class="trade-grid">
+
+        <!-- Account Value Chart -->
+        <div class="account-value-section">
+          <div class="av-header">
+            <h3>📈 Account Value</h3>
+            <div class="av-market-badge" id="avMarketBadge">
+              <span class="dot" id="avMarketDot"></span>
+              <span id="avMarketLabel">OFFLINE</span>
+            </div>
+          </div>
+          <div class="av-chart-container">
+            <canvas id="accountValueChart"></canvas>
+          </div>
+        </div>
+        <div class="portfolio-header">
+          <div class="port-card balance">
+            <span class="pc-label">Portfolio Value</span>
+            <span class="pc-value" id="portValue">₹10,00,000.00</span>
+          </div>
+          <div class="port-card">
+            <span class="pc-label">Cash Balance</span>
+            <span class="pc-value" id="portBalance">₹10,00,000.00</span>
+          </div>
+          <div class="port-card">
+            <span class="pc-label">Unrealized P&L</span>
+            <span class="pc-value" id="portUnrealized">₹0.00</span>
+          </div>
+          <div class="port-card">
+            <span class="pc-label">Realized P&L</span>
+            <span class="pc-value" id="portRealized">₹0.00</span>
+          </div>
+          <div class="port-card">
+            <span class="pc-label">Win Rate</span>
+            <span class="pc-value" id="portWinRate">0%</span>
+          </div>
+          <div class="port-card">
+            <span class="pc-label">Total Trades</span>
+            <span class="pc-value" id="portTrades">0</span>
+          </div>
+        </div>
+
+
+        <div class="bot-controls">
+          <div class="bot-status">
+            <span class="bot-dot" id="botDot"></span>
+            <span id="botStatus">Bot: OFF</span>
+          </div>
+          <div class="bot-buttons">
+            <button class="btn-bot" id="toggleBotBtn" onclick="toggleBot()">⚡ Auto Bot</button>
+            <button class="btn-scan" onclick="runAutoScan()">🔍 Auto Scan</button>
+            <button class="btn-reset" onclick="resetPortfolio()">🔄 Reset</button>
+          </div>
+        </div>
+
+
+        <div class="trade-panel">
+          <h3>📂 Open Positions</h3>
+          <div class="positions-table-wrap">
+            <table class="positions-table">
+              <thead>
+                <tr>
+                  <th>Ticker</th>
+                  <th>Shares</th>
+                  <th>Buy Price</th>
+                  <th>Current</th>
+                  <th>P&L</th>
+                  <th>P&L %</th>
+                  <th>Stop Loss</th>
+                  <th>Take Profit</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="positionsBody">
+                <tr>
+                  <td colspan="9" class="empty-msg">No open positions</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+
+        <div class="trade-panel">
+          <h3>📋 Trade History</h3>
+          <div class="trade-log" id="tradeLog">
+            <div class="empty-msg">No trades yet. Activate the bot or execute a trade.</div>
+          </div>
+        </div>
+
+
+        <div class="trade-panel">
+          <h3>⚡ Live Trade Feed</h3>
+          <div class="trade-feed" id="tradeFeed"></div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+
+
+
+
+  <section class="insights-section">
+    <h2 class="section-title">🌐 AI × Finance — Did You Know?</h2>
+    <div class="insights-grid">
+      <div class="insight-card">
+        <div class="insight-icon">🤖</div>
+        <h4>AI Handles 60-70% of Trades</h4>
+        <p>Algorithmic and AI-driven systems now execute the majority of trades on major stock exchanges worldwide.</p>
+      </div>
+      <div class="insight-card">
+        <div class="insight-icon">🧠</div>
+        <h4>LSTM Remembers Patterns</h4>
+        <p>Long Short-Term Memory networks can learn patterns across 60+ trading days, capturing trends that humans
+          easily miss.</p>
+      </div>
+      <div class="insight-card">
+        <div class="insight-icon">📰</div>
+        <h4>News Moves Markets</h4>
+        <p>Studies show that news sentiment can predict short-term stock movements with up to 70% accuracy when combined
+          with technical analysis.</p>
+      </div>
+      <div class="insight-card">
+        <div class="insight-icon">📊</div>
+        <h4>Bollinger Bands</h4>
+        <p>When Bollinger Band width contracts, a big price move is coming. Our model uses this "squeeze" signal in its
+          10-feature pipeline.</p>
+      </div>
+      <div class="insight-card">
+        <div class="insight-icon">⚡</div>
+        <h4>Sub-Second Decisions</h4>
+        <p>Once trained, our LSTM model generates 5-day forecasts in under 50ms — faster than any human analyst could
+          process a single chart.</p>
+      </div>
+      <div class="insight-card">
+        <div class="insight-icon">🛡️</div>
+        <h4>Risk Management is Key</h4>
+        <p>Professional trading firms never risk more than 2% per trade. Our bot uses stop-loss, take-profit, and
+          trailing stops for protection.</p>
+      </div>
+    </div>
+  </section>
+
+
+  <section class="pipeline-section">
+    <h2 class="section-title">⚙️ How StockSense AI Works</h2>
+    <div class="pipeline">
+      <div class="pipe-step">
+        <div class="pipe-num">01</div>
+        <div class="pipe-icon">📥</div>
+        <h4>Data Ingestion</h4>
+        <p>2 years of OHLCV data fetched from Yahoo Finance in real-time for any stock ticker.</p>
+      </div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-step">
+        <div class="pipe-num">02</div>
+        <div class="pipe-icon">📊</div>
+        <h4>Feature Engineering</h4>
+        <p>10 technical indicators computed: SMA, EMA, RSI, MACD, Bollinger Bands, ATR, and Volume.</p>
+      </div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-step">
+        <div class="pipe-num">03</div>
+        <div class="pipe-icon">🧠</div>
+        <h4>AI Prediction</h4>
+        <p>3-layer LSTM neural network trained on 60-day windows predicts next 5 business days' prices.</p>
+      </div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-step">
+        <div class="pipe-num">04</div>
+        <div class="pipe-icon">💹</div>
+        <h4>Smart Trading</h4>
+        <p>Composite score (LSTM + Technical + Sentiment) adapts to market regime for auto BUY/SELL.</p>
+      </div>
+    </div>
+  </section>
+
+
+  <footer class="app-footer">
+    <div class="footer-content">
+      <div class="footer-brand">
+        <span class="footer-logo">📈 StockSense AI</span>
+        <span class="footer-tagline">Where Machine Learning Meets Market Intelligence</span>
+      </div>
+      <div class="footer-tech">
+        <span>Built with</span>
+        <span class="tech-badge">Python</span>
+        <span class="tech-badge">PyTorch</span>
+        <span class="tech-badge">FastAPI</span>
+        <span class="tech-badge">FinBERT</span>
+        <span class="tech-badge">Chart.js</span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="app.js?v=6"></script>
+</body>
+
+</html>

@@ -1,0 +1,6 @@
+# Enterprise ML ensemble (40% of prediction blend)
+# Optional: install for full H2O.ai and DataRobot API support
+# Without these, local sklearn equivalents are used automatically
+
+h2o>=3.42.0
+datarobot>=3.6.0

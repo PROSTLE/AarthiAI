@@ -1,0 +1,778 @@
+================================================================================
+         STOCKSENSE AI — COMPLETE TRADE BOT ANALYSIS
+         Generated: 2026-03-06  |  Analyst: Antigravity AI
+================================================================================
+
+TABLE OF CONTENTS
+-----------------
+  1. Overview & Architecture
+  2. State Management (portfolio.json)
+  3. Constants & Configuration
+  4. Core Functions In trader.py
+     4a. Portfolio Lifecycle
+     4b. Wallet Management
+     4c. Position Sizing (Risk Management)
+     4d. Dynamic Stop-Loss / Take-Profit (ATR-based)
+     4e. Buy / Sell Execution
+     4f. Position Monitoring (check_position)
+     4g. Technical Scoring
+     4h. Composite Score Engine
+     4i. Market Regime Detection
+     4j. Trade Signal Evaluation
+  5. Intraday Pipeline (intraday_model.py)
+     5a. XGBoost Model Training
+     5b. Feature Engineering
+     5c. Confidence Scoring
+     5d. generate_intraday_signal()
+  6. FastAPI Endpoints (app.py) — Trading Routes
+  7. Auto-Scan Bot Loop
+  8. Signal Labels & Thresholds
+  9. Data Flow Diagram (text)
+ 10. Key Design Decisions
+ 11. Potential Risks & Limitations
+ 12. Summary
+
+================================================================================
+ 1. OVERVIEW & ARCHITECTURE
+================================================================================
+
+StockSense AI is an Indian stock market (NSE/BSE) paper-trading/simulation bot.
+It is NOT a live-brokerage bot — all trades are executed against a virtual
+balance tracked in a local JSON file (portfolio.json).
+
+COMPONENTS:
+  - trader.py       : Core logic (state, risk, buy/sell, scoring, regime)
+  - intraday_model.py : XGBoost intraday ML pipeline
+  - app.py          : FastAPI REST server exposing all bot endpoints
+  - model.py        : LSTM daily prediction model (5-day price forecasting)
+  - sentiment.py    : News/social sentiment scoring for stocks
+  - technical_signals.py : Technical indicator scoring
+  - llm_analysis.py : Gemini LLM reasoning layer
+  - stock_data.py   : Data fetching via yfinance
+
+DESIGN PHILOSOPHY:
+  - Purely paper-trading (no brokerage API)
+  - Multi-factor signal fusion: LSTM + XGBoost + Sentiment + Technicals + LLM
+  - Risk-first approach: position sizing based on stop-loss distance
+  - Adaptive to market regime (4-state: Bull/Bear × Low/High Volatility)
+  - Concurrency-safe using threading.Lock for all state mutations
+
+================================================================================
+ 2. STATE MANAGEMENT (portfolio.json)
+================================================================================
+
+All bot state is persisted in a local file called "portfolio.json".
+The state dictionary has these top-level keys:
+
+  KEY                 TYPE      DESCRIPTION
+  ─────────────────────────────────────────────────────────────────────────────
+  balance             float     Current available cash (starts at ₹10,00,000)
+  initial_balance     float     Baseline for P&L calculation (bumped on deposits)
+  positions           dict      Ticker → position record (open trades)
+  trade_history       list      Completed trades with full P&L records
+  bot_active          bool      Whether auto-scan is enabled (default: True)
+  created_at          str       ISO timestamp of portfolio creation
+  wallet_transactions list      Deposit/withdrawal history
+  value_history       list      Portfolio value snapshots (max 500 points)
+
+POSITION RECORD (inside "positions"):
+  ticker, shares, buy_price, cost, stop_loss, tp1, tp2,
+  trailing_stop, peak_price, predicted_prices, confidence,
+  regime, buy_time, bar_count
+
+TRADE RECORD (inside "trade_history"):
+  ticker, shares, buy_price, sell_price, cost, revenue,
+  profit, profit_pct, buy_time, sell_time, reason, confidence
+
+Concurrency: Every read/write is wrapped in a threading.Lock (_lock) to prevent
+race conditions when multiple HTTP requests arrive simultaneously.
+
+================================================================================
+ 3. CONSTANTS & CONFIGURATION
+================================================================================
+
+  CONSTANT                 VALUE     MEANING
+  ─────────────────────────────────────────────────────────────────────────────
+  INITIAL_BALANCE          ₹10,00,000  Starting paper-trade balance
+  MAX_HOLD_BARS            60        Auto-exit after 60 bars (~60 min intraday)
+  DEFAULT_POSITION_PCT     10.0%     Max allocation per trade (by balance)
+  RISK_PER_TRADE_MIN       0.8%      Minimum risk per trade (Kelly-like sizing)
+  RISK_PER_TRADE_MAX       1.5%      Maximum risk per trade
+  RISK_PER_TRADE_DEFAULT   1.0%      Default risk if not overridden
+  PRED_CHANGE_PCT_CAP      ±4.0%     Cap on LSTM price change for scoring
+
+  INTRADAY MODEL:
+  FORWARD_BARS             5         Predict return over next 5 one-minute bars
+  MODEL_CACHE_TTL          600s      Re-train XGBoost model every 10 minutes
+
+================================================================================
+ 4. CORE FUNCTIONS IN trader.py
+================================================================================
+
+────────────────────────────────────────────────────────────────────────────────
+ 4a. PORTFOLIO LIFECYCLE
+────────────────────────────────────────────────────────────────────────────────
+
+  _default_state()
+    Returns a fresh portfolio dict with ₹10L balance, empty positions/history.
+
+  _load_state()
+    Reads portfolio.json if it exists; otherwise returns _default_state().
+
+  _save_state(state)
+    Serialises the state dict back to portfolio.json with indent=2.
+
+  get_portfolio()
+    Thread-safe wrapper: acquires lock → loads → returns state.
+
+  reset_portfolio()
+    Replaces state with a fresh default and saves it.
+
+  toggle_bot()
+    Flips bot_active True/False and saves. Returns {"bot_active": <new_value>}.
+
+────────────────────────────────────────────────────────────────────────────────
+ 4b. WALLET MANAGEMENT
+────────────────────────────────────────────────────────────────────────────────
+
+  add_to_balance(amount, payment_id)
+    - Adds `amount` to balance AND to initial_balance
+    - Records a 'credit' wallet_transaction
+    - Returns: {status, new_balance, transaction}
+
+  withdraw_from_balance(amount)
+    - Validates amount <= balance (returns error if not)
+    - Subtracts from balance AND initial_balance
+    - Records a 'debit' wallet_transaction
+    - Returns: {status, new_balance, transaction}
+
+  get_wallet_transactions()
+    Returns the full wallet_transactions list.
+
+  record_portfolio_snapshot(total_value)
+    Appends {timestamp, value} to value_history (rolling, max 500 entries).
+
+  get_value_history()
+    Returns value_history list.
+    If no snapshots exist yet, synthesises history from trade_history
+    by accumulating profit on each trade from the initial balance.
+
+────────────────────────────────────────────────────────────────────────────────
+ 4c. POSITION SIZING — risk_check_position_size()
+────────────────────────────────────────────────────────────────────────────────
+
+Risk-based sizing: position size is derived from how much capital you're willing
+to LOSE on this trade (stop-loss distance), not just a fixed % of balance.
+
+FORMULA:
+  risk_amount   = balance × risk_pct          (risk_pct clamped 0.8%–1.5%)
+  per_share_risk = |entry_price − stop_loss|
+  shares        = floor(risk_amount / per_share_risk)
+
+SECONDARY CAP:
+  max_by_balance = floor((balance × 10%) / entry_price)
+  shares         = min(shares, max_by_balance)
+
+This means:
+  - If SL is far from entry → fewer shares (reduces position size)
+  - If SL is close to entry → more shares (but capped at 10% of balance)
+  - If per_share_risk is ≤ 0, fallback: use 1% of price as risk
+
+────────────────────────────────────────────────────────────────────────────────
+ 4d. DYNAMIC STOP-LOSS / TAKE-PROFIT — compute_dynamic_levels()
+────────────────────────────────────────────────────────────────────────────────
+
+All SL/TP levels are ATR-based, not hard percentage values.
+ATR (Average True Range) reflects actual recent volatility.
+
+BASE MULTIPLIERS:
+  SL  = entry - (ATR × 1.5)
+  TP1 = entry + (ATR × 2.5)
+  TP2 = entry + (ATR × 3.5)
+
+REGIME MODIFIERS (applied to base multipliers):
+  BULL_LOW_VOL  → SL × 0.9, TP × 1.2   (tight SL, generous TP)
+  BULL_HIGH_VOL → SL × 1.1, TP × 1.0   (wider SL)
+  BEAR_HIGH_VOL → SL × 1.3, TP × 0.7   (wide SL, conservative TP)
+  SIDEWAYS      → SL × 1.0, TP × 0.8   (reduced TP expectation)
+
+IPO BOOST (if stock is newly listed):
+  TP1 × 1.5, TP2 × 1.8, SL × 0.8  (more upside, tighter stop)
+
+CLAMPING:
+  TP1% clamped to [0.5%, 5.0%]
+  TP2% clamped to [TP1% + 0.3%, 5.0%]  (always at least 0.3% above TP1)
+
+TP2 INCLUSION:
+  TP2 is only included in bullish regimes or for IPO stocks.
+
+FALLBACK:
+  If ATR ≤ 0, uses price × 0.5% as a proxy ATR.
+
+────────────────────────────────────────────────────────────────────────────────
+ 4e. BUY EXECUTION — execute_buy()
+────────────────────────────────────────────────────────────────────────────────
+
+PARAMETERS: ticker, current_price, predicted_prices, confidence,
+            sl_price, tp1_price, tp2_price, regime
+
+FLOW:
+  1. Reject if already holding this ticker
+  2. If sl_price is valid (< current_price):
+       → Use risk_check_position_size() to calculate shares
+  3. Else (no valid SL):
+       → Fallback: allocate 10% of balance
+       → Fallback SL = entry × 0.985 (-1.5%)
+       → Fallback TP1 = entry × 1.02 (+2%)
+  4. If shares == 0, reject ("Position too small after risk check")
+  5. If shares × price > balance, reduce shares to fit balance exactly
+  6. Deduct cost from balance
+  7. Create position record (includes trailing_stop = sl_price, peak_price = entry)
+  8. Save state
+  9. OUTSIDE lock: record a portfolio value snapshot
+
+POSITION RECORD INCLUDES:
+  - bar_count: 0 (incremented each time check_position() is called → tracks hold time)
+  - trailing_stop: initially = sl_price (moves up as price rises)
+  - peak_price: tracks highest price seen (for trailing stop calculation)
+
+────────────────────────────────────────────────────────────────────────────────
+ 4f. SELL EXECUTION — execute_sell()
+────────────────────────────────────────────────────────────────────────────────
+
+PARAMETERS: ticker, current_price, reason
+
+FLOW:
+  1. Reject if no open position for ticker
+  2. Calculate: revenue = shares × sell_price
+  3. Calculate: profit = revenue - cost
+  4. Calculate: profit_pct = (profit / cost) × 100
+  5. Add revenue back to balance
+  6. Append full trade record to trade_history
+  7. Delete position from positions dict
+  8. Save state
+  9. OUTSIDE lock: record a portfolio value snapshot
+
+────────────────────────────────────────────────────────────────────────────────
+ 4g. POSITION MONITORING — check_position()
+────────────────────────────────────────────────────────────────────────────────
+
+Called every time the auto-scan runs on an open position to decide HOLD or SELL.
+
+CHECKS (in order):
+  1. HARD STOP-LOSS:
+       current_price <= stop_loss → SELL ("Stop-loss triggered")
+  
+  2. TAKE PROFIT 1:
+       current_price >= tp1 → SELL ("Target 1 reached")
+  
+  3. TRAILING STOP UPDATE:
+       If current_price > peak_price (new high):
+         - Update peak_price
+         - trail_dist = |buy_price - stop_loss| × 0.5
+         - new_trailing = current_price - trail_dist
+         - If new_trailing > old trailing_stop → update trailing_stop
+       Else if current_price <= trailing_stop:
+         → SELL ("Trailing stop triggered")
+  
+  4. MAX HOLD BARS:
+       bar_count is incremented every call
+       If bar_count >= 60 → SELL ("Max hold period (60 bars)")
+  
+  5. If none triggered → HOLD
+       Returns: {action:"hold", current_pnl%, current_price, stop_loss, tp1, trailing_stop}
+
+TRAILING STOP LOGIC DETAIL:
+  The trailing stop uses HALF the original SL distance as its trailing width.
+  Example: Entry=100, SL=95, trail_dist = |100-95| × 0.5 = 2.5
+  When price hits 102: trailing_stop = 102 - 2.5 = 99.5 (profit locked)
+  When price hits 105: trailing_stop = 105 - 2.5 = 102.5 (more profit locked)
+
+────────────────────────────────────────────────────────────────────────────────
+ 4h. TECHNICAL SCORE — compute_technical_score()
+────────────────────────────────────────────────────────────────────────────────
+
+Produces a 0-100 score from a dict of technical indicators.
+Starts at 50 (neutral), adds/subtracts points per signal:
+
+  INDICATOR         CONDITION                  ADJUSTMENT
+  ───────────────────────────────────────────────────────
+  RSI               < 25 (strong oversold)     +20
+                    < 35 (moderate oversold)   +12
+                    < 45 (slight oversold)     +5
+                    > 75 (strong overbought)   -20
+                    > 65 (moderate OB)         -12
+                    > 55 (slight OB)           -5
+  MACD-Signal diff  > 0 (bullish cross)        up to +15
+                    < 0 (bearish cross)        up to -15
+  Price vs SMA_20   Above                      +8
+                    Below                      -8
+  Price vs SMA_50   Above                      +7
+                    Below                      -7
+  SMA_20 vs SMA_50  Golden cross (20>50)       +5
+                    Death cross (20<50)        -5
+
+  Final score clamped to [0, 100].
+
+────────────────────────────────────────────────────────────────────────────────
+ 4i. COMPOSITE SCORE ENGINE — compute_composite_score()
+────────────────────────────────────────────────────────────────────────────────
+
+Combines three sub-scores with regime-adjusted weightings.
+
+SUB-SCORES:
+  A. LSTM Score (from 5-day price prediction):
+       - pred_change_pct capped at ±4% for scoring
+       - lstm_score = 50 + (capped_pct × 5) + ((days_above - 2.5) × 6)
+                       + ((confidence - 50) × 0.3)
+       - Clamped to [0, 100]
+
+  B. XGBoost Score:
+       - Passed in from intraday_model.py or defaults to 50
+
+  C. Sentiment Score:
+       - If sentiment_score (range -1 to +1) is provided:
+           sent_score = 50 + sentiment_score × 50  (maps to 0-100)
+       - Defaults to 50.0 if not provided
+
+WEIGHTINGS:
+  Regime           LSTM   XGBoost  Sentiment
+  ─────────────────────────────────────────
+  Normal (low vol) 45%    45%      10%
+  High Vol         48.5%  48.5%    3%    ← news weight reduced in volatile markets
+
+FORMULA:
+  composite = (lstm × W_lstm) + (xgb × W_xgb) + (sent × W_sent)
+  Clamped to [0, 100], rounded to 1 decimal.
+
+────────────────────────────────────────────────────────────────────────────────
+ 4j. MARKET REGIME DETECTION — detect_market_regime()
+────────────────────────────────────────────────────────────────────────────────
+
+4-state regime classification using VIX + Nifty trend + stock indicators.
+
+INPUTS:
+  - indicators dict: RSI, price, EMA_9, EMA_21, Supertrend_Dir, MACD, MACD_Signal
+  - vix dict: vix_level (India VIX)
+  - nifty dict: trend ("bullish" / "flat" / "bearish")
+
+STOCK SIGNAL COUNTING:
+  For each indicated direction, score bull_signals and bear_signals (0-5 each):
+    RSI < 40 → bull+1 | RSI > 65 → bear+1
+    price > EMA9 → bull+1 | else → bear+1
+    price > EMA21 → bull+1 | else → bear+1
+    Supertrend_Dir == 1 → bull+1 | == -1 → bear+1
+    MACD > MACD_Signal → bull+1 | else → bear+1
+
+REGIME RULES (priority order):
+  1. nifty_bearish AND (VIX >= 22 OR bear_signals >= 3)
+       → BEAR_HIGH_VOL  | entry_threshold=0.10, min_confidence=5
+
+  2. nifty_bullish AND VIX < 18 AND bull_signals >= 2
+       → BULL_LOW_VOL   | entry_threshold=0.05, min_confidence=2
+
+  3. nifty_bullish AND VIX >= 18
+       → BULL_HIGH_VOL  | entry_threshold=0.10, min_confidence=5
+
+  4. Otherwise
+       → SIDEWAYS       | entry_threshold=0.15, min_confidence=5
+
+NOTE: entry_threshold values are marked as "DEMO" in code — they are
+intentionally very low to allow frequent trading in simulation mode.
+
+================================================================================
+ 5. INTRADAY PIPELINE (intraday_model.py)
+================================================================================
+
+This pipeline is used exclusively by the Auto Trade tab's auto-scan.
+It replaces the LSTM-based daily prediction with a faster XGBoost model
+operating on 1-minute bar data.
+
+────────────────────────────────────────────────────────────────────────────────
+ 5a. XGBoost MODEL TRAINING — train_intraday_model()
+────────────────────────────────────────────────────────────────────────────────
+
+TARGET VARIABLE:
+  Percentage return over the next 5 one-minute bars (FORWARD_BARS=5)
+  target = ((close_t+5 - close_t) / close_t) × 100
+
+DATA SPLIT: Time-series safe (no shuffling)
+  Train: first 80% of bars
+  Test:  last 20% of bars
+
+MODEL: XGBRegressor
+  n_estimators=200, max_depth=5, learning_rate=0.05,
+  subsample=0.8, colsample_bytree=0.8,
+  min_child_weight=5, reg_alpha=0.1, reg_lambda=1.0
+
+METRICS REPORTED:
+  rmse          : Root mean squared error on test set
+  dir_accuracy  : % of test predictions where direction (up/down) was correct
+
+CACHE:
+  Model is cached in RAM with a 10-minute TTL per ticker.
+  Avoids retraining on every API call.
+  Minimum 100 rows required to train.
+
+────────────────────────────────────────────────────────────────────────────────
+ 5b. FEATURE ENGINEERING
+────────────────────────────────────────────────────────────────────────────────
+
+STOCK-LEVEL FEATURES (from add_intraday_indicators in stock_data.py):
+  returns_1bar    : 1-bar return %
+  returns_5bar    : 5-bar return %
+  returns_15bar   : 15-bar return %
+  price_vs_ema9   : (price / EMA9) - 1
+  price_vs_ema21  : (price / EMA21) - 1
+  price_vs_sma50  : (price / SMA50) - 1
+  RSI             : RSI (14-period)
+  MACD            : MACD line
+  MACD_Signal     : MACD signal line
+  MACD_Hist       : MACD histogram
+  ATR             : ATR (14-period)
+  BB_Width        : Bollinger Band width
+  BB_Position     : Price position within Bollinger Bands
+  volume_ratio    : Current volume / 20-bar average volume
+  price_vs_vwap   : (price / VWAP) - 1
+  Supertrend_Dir  : Supertrend direction (+1 bullish / -1 bearish)
+  supertrend_dist : Distance from price to Supertrend line
+  minute_of_day   : Minute in the trading day (time-of-day feature)
+  is_first_hour   : Binary: 1 if within first hour of market
+  is_last_hour    : Binary: 1 if within last hour of market
+
+MARKET-CONTEXT FEATURES (appended at training & prediction time):
+  vix_level       : India VIX current level
+  vix_change_5d   : 5-day change in VIX
+  nifty_trend_dir : +1 (bullish) / 0 (flat) / -1 (bearish)
+  sector_strength : Sector index return vs Nifty over 5 days (%)
+
+SECTOR STRENGTH:
+  Uses yfinance to lookup the stock's sector, then fetches the corresponding
+  NSE sector index ( ^NSEBANK, ^CNXIT, ^CNXPHARMA, etc.) 5-day return vs Nifty.
+
+────────────────────────────────────────────────────────────────────────────────
+ 5c. CONFIDENCE SCORING — compute_confidence()
+────────────────────────────────────────────────────────────────────────────────
+
+Produces a 0-100 confidence score for each intraday prediction.
+
+COMPONENTS:
+  snr_score   = min(40, (|expected_return| / rmse) × 20)
+                  → Signal to Noise Ratio: how big is the move vs model error?
+  dir_score   = min(35, max(0, (dir_accuracy - 45) × 0.7))
+                  → Anything above 45% directional accuracy contributes
+  regime_bonus = 15 (BULL_LOW_VOL) / 10 (BULL_HIGH_VOL) / 0 (SIDEWAYS) / -5 (BEAR)
+  dir_bonus    = 10 if return > 0.3% | 5 if return > 0 | 0 otherwise
+
+  confidence = snr_score + dir_score + regime_bonus + dir_bonus
+
+────────────────────────────────────────────────────────────────────────────────
+ 5d. generate_intraday_signal()
+────────────────────────────────────────────────────────────────────────────────
+
+Full end-to-end pipeline called by auto-scan:
+
+  STEP 1 → intraday_predict()
+    Fetch 5 days of 1-min data → add indicators → train or load cached XGBoost
+    → predict next-5-bar return for the most recent bar
+
+  STEP 2 → detect_market_regime()
+    Classify current market regime using RSI, Supertrend, VIX, Nifty trend
+
+  STEP 3 → detect_ipo_stock()
+    Check if ticker was recently listed (< N days ago)
+
+  STEP 4 → compute_dynamic_levels()
+    Calculate ATR-based SL/TP1/TP2 with regime and IPO modifiers
+
+  STEP 5 → compute_confidence()
+    Convert raw prediction stats into a 0-100 confidence score
+
+  STEP 6 → Entry Decision
+    IF expected_return >= entry_threshold AND confidence >= min_confidence → BUY
+    ELIF expected_return > 0 AND confidence >= min_confidence × 1.3 → BUY (relaxed)
+    ELSE → WAIT
+
+  OUTPUT signal dict includes:
+    action, ticker, entry_price, sl_price, sl_pct, tp1_price, tp1_pct,
+    tp2_price, tp2_pct, confidence, expected_return_pct, regime,
+    regime_details, is_ipo, ipo_age_days, current_atr, current_rsi,
+    supertrend_dir, vwap, volume_ratio, sector_strength,
+    model_metrics {rmse, dir_accuracy, train_samples},
+    top_features (top 5 XGBoost feature importances), vix, nifty_trend
+
+================================================================================
+ 6. FASTAPI ENDPOINTS (app.py) — TRADING ROUTES
+================================================================================
+
+  METHOD   ENDPOINT                         DESCRIPTION
+  ─────────────────────────────────────────────────────────────────────────────
+  GET      /api/trade/portfolio              Full portfolio with live PnL
+  POST     /api/trade/reset                 Reset portfolio to default state
+  POST     /api/trade/toggle                Toggle bot ON/OFF
+  POST     /api/trade/execute/{ticker}      Run trade signal on a specific ticker
+  GET      /api/trade/check/{ticker}        Check position status at live price
+  POST     /api/trade/sell/{ticker}         Force sell a position
+  GET      /api/trade/intraday-signal/{t}   Raw intraday XGBoost signal
+  POST     /api/trade/auto-scan             Full auto-scan cycle (see section 7)
+  GET      /api/wallet/balance              Wallet cash balance
+  POST     /api/wallet/add                  Deposit money (Razorpay-style)
+  POST     /api/wallet/withdraw             Withdraw money
+  GET      /api/wallet/transactions         Full deposit/withdrawal history
+  GET      /api/portfolio/value-history     Time-series of portfolio value
+
+/api/trade/execute/{ticker} FLOW:
+  1. Fetch live price
+  2. Fetch stock data + add technical indicators
+  3. Compute sentiment, technical signals
+  4. Run LSTM prediction (train_and_predict)
+  5. Build indicators dict
+  6. Call evaluate_trade_signal() → returns BUY / SELL / HOLD / WAIT
+  7. Return signal + live price + prediction details
+
+/api/trade/portfolio FLOW:
+  1. Load raw portfolio
+  2. For each open position → fetch live price → compute unrealized PnL
+  3. Aggregate: total_value, total_unrealized_pnl, total_realized_pnl,
+     total_trades, winning_trades, losing_trades, win_rate
+
+================================================================================
+ 7. AUTO-SCAN BOT LOOP
+================================================================================
+
+Endpoint: POST /api/trade/auto-scan
+
+This is the heart of the automated bot. Called by the frontend on a timer.
+
+PHASE 1 — CHECK EXISTING POSITIONS:
+  For each ticker currently in portfolio["positions"]:
+    - Fetch live price
+    - Call check_position(ticker, live_price)
+    - If action == "sell" → execute_sell (records in trade_history)
+    - Reasons that trigger sell: Stop-loss | TP1 hit | Trailing stop | Max hold
+
+PHASE 2 — SCAN FOR NEW ENTRIES:
+  Loops over first 8 tickers in SCAN_TICKERS list (major NSE stocks):
+    RELIANCE.NS, TCS.NS, INFY.NS, HDFCBANK.NS, ICICIBANK.NS,
+    BHARTIARTL.NS, SBIN.NS, HINDUNILVR.NS
+
+  For each ticker NOT already in positions:
+    - Call generate_intraday_signal(ticker)
+    - If signal.action == "BUY":
+        → execute_buy(ticker, entry_price, [tp1_price], confidence,
+                      sl_price, tp1_price, tp2_price, regime)
+
+RETURN:
+  { status, scanned, results (list of signals), portfolio (full state) }
+
+GUARD:
+  If bot_active is False → immediately returns { status: "inactive" }
+
+================================================================================
+ 8. SIGNAL LABELS & THRESHOLDS
+================================================================================
+
+IN _analyze_one() — Stock Scanner (High Potential tab):
+  Score             Signal Label
+  ─────────────────────────────
+  >= 70             🟢 Strong Buy
+  55 – 69           🔵 Buy
+  40 – 54           🟡 Hold
+  < 40              🔴 Sell
+
+  SCORING (from base 50):
+    RSI < 30   → +20 | RSI < 40 → +10 | RSI > 70 → -15 | RSI > 60 → -5
+    MACD > Signal → +15 | else → -10
+    Price > SMA20 → +10 | else → -10
+    Volume surge (vol > vol_avg × 1.3) → +10
+    1-day drop > 1% → -8
+    5-day negative trend → penalty up to -20
+    Both 1-day AND 5-day negative → hard cap at 64 (prevents Strong Buy)
+
+IN evaluate_trade_signal() — Manual Trade Execution:
+  Regime-specific buy/sell composite score thresholds:
+    BULL_LOW_VOL  : buy_threshold=5,  sell_threshold=30
+    BULL_HIGH_VOL : buy_threshold=8,  sell_threshold=35
+    BEAR_HIGH_VOL : buy_threshold=10, sell_threshold=40
+    SIDEWAYS      : buy_threshold=7,  sell_threshold=35
+
+  Actions returned:
+    BUY  — composite >= buy_threshold AND confidence >= min_confidence
+         OR (pred_change > 2% AND days_above >= 3 AND confidence >= 25)
+    SELL — position check triggers / composite <= sell_threshold
+    HOLD — in position but no exit trigger
+    WAIT — no position and no buy signal
+
+IN generate_intraday_signal() — Auto-Scan XGBoost:
+  action = BUY if expected_return >= entry_threshold AND confidence >= min_confidence
+  action = BUY (relaxed) if expected_return > 0 AND confidence >= min_confidence × 1.3
+  action = WAIT otherwise
+
+================================================================================
+ 9. DATA FLOW DIAGRAM (TEXT)
+================================================================================
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │                        FRONTEND (React/Web)                             │
+  │  [Auto-Scan Button] ──→ POST /api/trade/auto-scan                       │
+  └──────────────────────────────────┬──────────────────────────────────────┘
+                                     │
+  ┌──────────────────────────────────▼──────────────────────────────────────┐
+  │                    app.py — FastAPI Server                               │
+  │                                                                          │
+  │  trade_auto_scan()                                                       │
+  │  │                                                                       │
+  │  ├── Phase 1: Check Existing Positions                                   │
+  │  │    └─→ fetch_live_price(ticker)          [stock_data.py / yfinance]   │
+  │  │    └─→ check_position(ticker, price)     [trader.py]                  │
+  │  │         └─→ execute_sell() if triggered  [trader.py]                  │
+  │  │                                                                       │
+  │  └── Phase 2: Scan for New Entries                                       │
+  │       └─→ generate_intraday_signal(ticker)  [intraday_model.py]          │
+  │            │                                                             │
+  │            ├─→ fetch_intraday_data()         [stock_data.py]             │
+  │            ├─→ add_intraday_indicators()     [stock_data.py]             │
+  │            ├─→ fetch_india_vix()             [stock_data.py]             │
+  │            ├─→ fetch_nifty_trend()           [stock_data.py]             │
+  │            ├─→ _fetch_sector_strength()      [intraday_model.py]         │
+  │            ├─→ train_intraday_model()        [XGBoost training]          │
+  │            ├─→ predict(latest bar)           [XGBoost inference]         │
+  │            ├─→ detect_market_regime()        [trader.py]                 │
+  │            ├─→ detect_ipo_stock()            [stock_data.py]             │
+  │            ├─→ compute_dynamic_levels()      [trader.py]                 │
+  │            ├─→ compute_confidence()          [intraday_model.py]         │
+  │            └─→ Return structured signal                                  │
+  │                                                                          │
+  │       If signal.action == "BUY":                                         │
+  │            └─→ execute_buy()                 [trader.py]                 │
+  │                 └─→ risk_check_position_size()                           │
+  │                 └─→ Update portfolio.json                                │
+  └──────────────────────────────────────────────────────────────────────────┘
+
+================================================================================
+ 10. KEY DESIGN DECISIONS
+================================================================================
+
+1. ALL IN-MEMORY STATE VIA ONE JSON FILE
+   Rather than a database, the bot uses portfolio.json. This is simple but not
+   suitable for production multi-user deployment. The threading.Lock prevents
+   corruption when multiple endpoints run concurrently.
+
+2. ATR-BASED SL/TP INSTEAD OF FIXED PERCENTAGES
+   This adapts to current volatility. A volatile stock gets wider SL/TP
+   naturally, preventing premature stop-outs or insufficient targets.
+
+3. TRAILING STOP = HALF THE ORIGINAL SL DISTANCE
+   Conservative trailing. Captures a portion of upside profit before giving
+   back too much to a downtick.
+
+4. 4-STATE MARKET REGIME
+   The bot does not trade the same way in every market. In bear/high-vol regimes:
+   - Entry threshold raised (harder to buy)
+   - Sentiment weight dropped to 3% (news can be misleading)
+   - SL is wider (regime_mod × 1.3)
+
+5. INTRADAY XGBoost FOR AUTO-SCAN (not LSTM)
+   LSTM is used for 5-day daily predictions; XGBoost on 1-min intraday data
+   for the auto-scanner. XGBoost is faster to train and better suited to
+   tabular features.
+
+6. MODEL CACHE (10 MIN TTL)
+   Prevents retraining on every scan tick. Models are reused for 10 minutes
+   before being retrained with fresh data.
+
+7. DEMO ENTRY THRESHOLDS
+   The code explicitly comments entry_threshold values as "DEMO" with very low
+   numbers (e.g., 0.05 = 5% expected return for buy signal). This makes the
+   bot trade frequently in simulation mode for demonstration purposes.
+
+8. TREND PENALTY IN SCANNER
+   The _analyze_one() scanner prevents "Strong Buy" labels on stocks in a
+   clear downtrend by applying momentum penalties and a hard cap (64 max score)
+   when both 1-day and 5-day price trends are negative.
+
+================================================================================
+ 11. POTENTIAL RISKS & LIMITATIONS
+================================================================================
+
+1. SINGLE FILE STATE (portfolio.json):
+   No transaction isolation. If the process crashes mid-write, the file
+   can become corrupted. No backup mechanism.
+
+2. DEMO THRESHOLDS:
+   The very low entry thresholds mean the bot would trade constantly in a
+   live environment — not suitable for real capital without recalibration.
+
+3. NO BROKERAGE INTEGRATION:
+   This is a pure paper-trading bot. There is no Zerodha, ICICI Direct, or
+   Angel Broking API integration. Prices are from yfinance (delayed).
+
+4. NO PORTFOLIO CONCENTRATION LIMIT:
+   Multiple tickers can be bought simultaneously. No check for total exposure
+   as a percentage of portfolio (only per-trade is capped at 10%).
+
+5. TICK LAG WITH yfinance:
+   yfinance data can be delayed by 15 minutes for free tier. Intraday signals
+   may not reflect true real-time prices.
+
+6. MAX_HOLD_BARS = 60 (bar_count, not clock time):
+   bar_count is incremented each time check_position() is called. If the
+   auto-scan runs once per minute, 60 bars ≈ 60 minutes. But if frequency
+   changes, this clock is off.
+
+7. LSTM PREDICTION CAPPED AT ±4%:
+   Very large predicted moves are clipped for scoring. This prevents the bot
+   from acting on extreme LSTM predictions but also limits upside enthusiasm
+   for genuinely volatile moves.
+
+8. LLM DEPENDENCY:
+   analyze_with_llm() calls Gemini API with an expiry-prone API key. On failure,
+   it falls back gracefully but reduces the quality of composite scoring.
+
+9. NO SHORTING:
+   The bot only takes long (buy) positions. No short-selling capability exists.
+
+10. SCANS ONLY 8 TICKERS IN AUTO-SCAN:
+    The auto-scan only scans SCAN_TICKERS[:8], which are 8 of the largest NSE
+    stocks. Mid/small-cap opportunities are not auto-discovered.
+
+================================================================================
+ 12. SUMMARY
+================================================================================
+
+The StockSense AI trade bot is a sophisticated PAPER-TRADING simulation engine
+for Indian equity markets (NSE). Here is how it works end-to-end:
+
+  ① When auto-scan is triggered:
+      → It first reviews all open positions and exits any that triggered
+        a stop-loss, take-profit, trailing stop, or exceeded 60 bars.
+
+  ② For new entry opportunities:
+      → It runs the intraday XGBoost model on 1-minute bar data for each
+        of 8 major NSE stocks.
+      → The model predicts the next 5-minute return.
+      → Market regime (bull/bear × low/high vol) is classified from VIX,
+        Nifty trend, and stock-level indicators.
+      → ATR-based dynamic SL, TP1, TP2 levels are computed.
+      → A confidence score (0-100) is derived from signal strength, model
+        accuracy, regime, and return magnitude.
+      → If expected_return ≥ regime threshold AND confidence ≥ minimum:
+          → Buy is executed with risk-based position sizing.
+
+  ③ Position sizing is RISK-BASED:
+      → Capital at risk per trade = 0.8%–1.5% of balance
+      → Shares = (risk amount) / (entry - stop_loss distance)
+      → Capped at 10% of balance per position
+
+  ④ The entire state (cash, positions, history) is persisted in portfolio.json.
+      Value snapshots are recorded for charting portfolio performance over time.
+
+  ⑤ For manual stock analysis, a 5-factor composite score is used:
+      LSTM prediction (45%) + XGBoost score (45%) + News sentiment (10%)
+      Adjusted for regime (3% sentiment in high-volatility markets).
+
+  ⑥ All operations are thread-safe via Python threading.Lock.
+
+================================================================================
+ END OF ANALYSIS
+================================================================================
