@@ -17,19 +17,29 @@ FEATURE_COLS = ["Close", "SMA_20", "EMA_20", "RSI", "MACD", "Volume",
                 "BB_Upper", "BB_Lower", "BB_Width", "ATR"]
 LOOK_BACK = 60       # Number of historical days used as LSTM input window
 PREDICT_DAYS = 5     # Number of days to forecast
-# ── 5-Factor Prediction Weights ──────────────────────
-# Each factor contributes to the final predicted price.
-# Directional factors (sentiment, technical, LLM) push the base prediction
-# up or down based on their score.
-W_LSTM         = 0.15   # Day-by-day price shape
+
+# ── 5-Factor Prediction Weights ────────────────────────────────────────────
+# IMPORTANT: LLM weight reduced 32%→13% because Gemini does not have
+# real-time NSE price data. It makes qualitative assessments, not 
+# quantitative ones. LSTM is now dominant for price trajectory.
+# Technical weight raised: RSI/MACD are grounded to actual candlestick data.
+W_LSTM         = 0.30   # Day-by-day price shape  (was 0.15)
 W_ENTERPRISE   = 0.25   # H2O + DataRobot + Alteryx magnitude
-W_TECHNICAL    = 0.13   # RSI / MACD / SMA trend scoring
-W_SENTIMENT    = 0.15   # FinBERT + VADER news sentiment
-W_LLM          = 0.32   # Google Gemini market analysis
+W_TECHNICAL    = 0.20   # RSI / MACD / SMA trend scoring  (was 0.13)
+W_SENTIMENT    = 0.12   # FinBERT + VADER news sentiment  (was 0.15)
+W_LLM          = 0.13   # Google Gemini market analysis   (was 0.32)
 
 # Max price adjustment from directional factors (% of price)
-# Prevents extreme swings from sentiment/LLM alone
-MAX_DIRECTIONAL_IMPACT_PCT = 3.0
+# Reduced 3.0→1.2: prevents LLM/Sentiment from overriding quantitative signal
+MAX_DIRECTIONAL_IMPACT_PCT = 1.2
+
+# Max single-day move as % of previous-day price (realistic large-cap cap)
+# TCS, RELIANCE etc rarely move >2.5% in a single session without news
+MAX_DAILY_MOVE_PCT = 2.5
+
+# Live-price anchor tolerance: Day 1 must be within this % of the actual
+# current traded price. Prevents gap-up/gap-down hallucinations.
+DAY1_ANCHOR_PCT = 1.8
 
 # Drawdown dampening: when recent 2-day drop > 3%, reduce rubber-band bounce
 DRAWDOWN_THRESHOLD_PCT = 2.9
@@ -96,11 +106,6 @@ def _apply_drawdown_dampening(
     current_price: float,
     df: pd.DataFrame,
 ) -> list[float]:
-    """
-    When stock just suffered a sharp sell-off (e.g. earnings miss), dampen
-    immediate V-shaped bounce prediction. Instead of pulling toward FLAT
-    (which creates dead-pulse), pull toward a gentle continuation slope.
-    """
     if len(df) < 3 or len(predicted_prices) != PREDICT_DAYS:
         return predicted_prices
 
@@ -112,24 +117,79 @@ def _apply_drawdown_dampening(
     if worst_return > -DRAWDOWN_THRESHOLD_PCT:
         return predicted_prices
 
-    # Model predicts bounce (day1 > current)?
     day1_pred = predicted_prices[0]
     if day1_pred <= current_price:
         return predicted_prices
 
-    # Instead of flat line (bathtub), use a gentle downward slope
-    # that respects the recent momentum direction, then gradually recovers
-    recent_slope = worst_return / 100  # e.g., -0.03 for -3% drop
+    recent_slope = worst_return / 100
     damped = []
     for i in range(PREDICT_DAYS):
         t = (i + 1) / PREDICT_DAYS
-        # Day 1-2: continue slight downtrend; Day 3-5: gradual recovery
-        momentum_factor = recent_slope * 0.3 * (1 - t)  # fades over time
+        momentum_factor = recent_slope * 0.3 * (1 - t)
         recovery_factor = t * (predicted_prices[-1] - current_price) / current_price * 0.5
         slope_val = current_price * (1 + momentum_factor + recovery_factor)
         blended = (1 - DAMPER_STRENGTH) * predicted_prices[i] + DAMPER_STRENGTH * slope_val
         damped.append(round(blended, 2))
     return damped
+
+
+def _anchor_to_live_price(
+    predicted_prices: list[float],
+    live_price: float,
+) -> list[float]:
+    """
+    Hard-anchor Day 1 within DAY1_ANCHOR_PCT of the actual live traded price.
+    This prevents the model from predicting a ₹400 gap-up when the stock is
+    actually trading at ₹2365 right now.
+    The remaining days are scaled proportionally so the curve shape is preserved.
+    """
+    if not predicted_prices or live_price <= 0:
+        return predicted_prices
+
+    day1 = predicted_prices[0]
+    max_deviation = live_price * DAY1_ANCHOR_PCT / 100.0
+
+    if abs(day1 - live_price) <= max_deviation:
+        return predicted_prices  # Already within tolerance — no adjustment needed
+
+    # Pull Day 1 back to the edge of the tolerance band
+    if day1 > live_price:
+        anchored_day1 = live_price + max_deviation
+    else:
+        anchored_day1 = live_price - max_deviation
+
+    # Scale remaining days to preserve the curve shape
+    shift = anchored_day1 - day1
+    result = []
+    for i, p in enumerate(predicted_prices):
+        # Shift fades over the 5 days: Day 1 gets full shift, Day 5 gets 20%
+        fade = 1.0 - (i * 0.15)  # 1.0, 0.85, 0.70, 0.55, 0.40
+        result.append(round(p + shift * fade, 2))
+    return result
+
+
+def _cap_daily_moves(
+    predicted_prices: list[float],
+    current_price: float,
+) -> list[float]:
+    """
+    Enforce a per-day move cap of MAX_DAILY_MOVE_PCT.
+    Large-cap Indian stocks (TCS, RELIANCE, HDFC, etc.) almost never move
+    more than 2.5% in a single session without a major event.
+    Caps both upside and downside to prevent fantasy trajectories.
+    """
+    result = []
+    prev = current_price
+    for i, p in enumerate(predicted_prices):
+        max_move = prev * MAX_DAILY_MOVE_PCT / 100.0
+        if p > prev + max_move:
+            p = prev + max_move
+        elif p < prev - max_move:
+            p = prev - max_move
+        result.append(round(p, 2))
+        prev = p
+    return result
+
 
 
 def _add_minimum_volatility(
@@ -293,14 +353,15 @@ def train_and_predict(
 
     # ── Crisis Mode Detection ──
     is_crisis, crisis_reason = detect_crisis_mode(sentiment_score, atr_pct, vix_level)
-    
-    # Dynamic weighting
+
+    # Dynamic weighting — in crisis, emphasise sentiment + LLM more
+    # but LLM is still capped to prevent hallucinations
     if is_crisis:
-        w_lstm = 0.10
-        w_enterprise = 0.15
-        w_technical = 0.15
-        w_sentiment = 0.20  # Updated per user request
-        w_llm = 0.40        # Updated per user request
+        w_lstm = 0.25
+        w_enterprise = 0.20
+        w_technical = 0.18
+        w_sentiment = 0.20
+        w_llm = 0.17
     else:
         w_lstm = W_LSTM
         w_enterprise = W_ENTERPRISE
@@ -404,6 +465,18 @@ def train_and_predict(
     ent_frac = w_enterprise / lstm_enterprise_weight  
 
     if enterprise_blend is not None:
+        # Sanity-check enterprise: if Day 1 is >8% from current price,
+        # it's predicting a mean-reversion from historical highs — dampen it.
+        ent_day1 = enterprise_blend[0]
+        ent_deviation_pct = abs(ent_day1 - current_price) / current_price * 100
+        if ent_deviation_pct > 8.0:
+            # Pull enterprise predictions toward current price proportionally
+            pull_factor = 8.0 / ent_deviation_pct  # e.g., 8/30 = 0.27
+            enterprise_blend = [
+                round(current_price + (p - current_price) * pull_factor, 2)
+                for p in enterprise_blend
+            ]
+
         # Shift LSTM to match enterprise endpoint, preserving curvature
         ent_day5 = enterprise_blend[-1]
         lstm_day5 = lstm_prices[-1]
@@ -421,8 +494,8 @@ def train_and_predict(
         models_used = ["LSTM"]
 
     # ── Apply directional factors (sentiment + technical + LLM) ──
-    # Each factor's score (-1 to +1) is converted to a price adjustment %
-    # The adjustment builds over the 5 days (stronger at day 5)
+    # Each factor nudges prices — total impact capped at MAX_DIRECTIONAL_IMPACT_PCT
+    # LLM and sentiment can push direction but cannot override price level
     directional_weight = w_sentiment + w_technical + w_llm 
     if directional_weight > 0:
         # Weighted directional score
@@ -445,8 +518,15 @@ def train_and_predict(
     else:
         predicted_prices = [round(p, 2) for p in base_prices]
 
-    # ── Post-processing ──
+    # ── Post-processing: apply physical constraints ──
+    # Order matters:
+    #   1. Drawdown dampening (handles crash-bounce hallucinations)
+    #   2. Daily move cap    (prevents >2.5%/day fantasy moves)
+    #   3. Live price anchor (pins Day 1 to actual traded price)
+    #   4. Min volatility    (prevents dead-pulse flat lines)
     predicted_prices = _apply_drawdown_dampening(predicted_prices, current_price, df)
+    predicted_prices = _cap_daily_moves(predicted_prices, current_price)
+    predicted_prices = _anchor_to_live_price(predicted_prices, current_price)
     predicted_prices = _add_minimum_volatility(predicted_prices, current_price, df)
 
     # ── Factor breakdown for the API response ──
