@@ -8,6 +8,7 @@ from model import train_and_predict
 from technical_signals import score_technical_signals
 from llm_analysis import analyze_with_llm
 from intraday_model import generate_intraday_signal
+from long_term_analysis import analyze_long_term
 from trader import (
     get_portfolio, reset_portfolio, toggle_bot,
     evaluate_trade_signal, execute_sell, execute_buy, check_position,
@@ -695,6 +696,44 @@ def portfolio_value_history():
     try:
         snapshots = get_value_history()
         return {"snapshots": snapshots, "status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+# ── Long-Term Analysis (5-Pillar Scoring Engine) ──────────────────────────────
+
+@app.get("/api/long-term/{ticker}")
+def long_term_analysis(ticker: str):
+    """
+    Run the 5-pillar long-term scoring engine for any NSE/BSE stock.
+    Returns composite score, pillar breakdown, verdict, position sizing.
+    """
+    try:
+        # Fetch all inputs in parallel
+        df = fetch_stock_data(ticker)
+        df = add_technical_indicators(df)
+        info = get_stock_info(ticker)
+        sent = analyze_sentiment(ticker)
+
+        latest = df.iloc[-1]
+        df_latest_dict = {
+            "Close":        float(latest.get("Close", 0)),
+            "RSI":          float(latest.get("RSI", 50)),
+            "MACD":         float(latest.get("MACD", 0)),
+            "MACD_Signal":  float(latest.get("MACD_Signal", 0)),
+            "SMA_20":       float(latest.get("SMA_20", 0)),
+            "SMA_50":       float(latest.get("SMA_50", 0)),
+            "BB_Width":     float(latest.get("BB_Width", 0)),
+            "ATR":          float(latest.get("ATR", 0)),
+        }
+
+        result = analyze_long_term(
+            ticker=ticker,
+            info=info,
+            df_latest=df_latest_dict,
+            sentiment_result=sent,
+        )
+        return result
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 

@@ -382,6 +382,69 @@ input, select, textarea { font-family: inherit; }
 .view-content { padding: 20px 24px; }
 .hidden { display: none !important; }
 
+/* ════════ LONG-TERM ANALYSIS PANEL ════════ */
+.lt-panel { padding: 20px; }
+.lt-loader { padding: 40px 20px; text-align: center; }
+
+/* Score ring */
+.lt-header { display: flex; align-items: center; gap: 20px; margin-bottom: 16px; }
+.lt-score-ring { position: relative; width: 80px; height: 80px; flex-shrink: 0; }
+.lt-ring-svg { width: 100%; height: 100%; }
+.lt-ring-label { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.lt-score-num { font-family: var(--font-headline); font-size: 22px; font-weight: 700; color: var(--primary); line-height: 1; }
+.lt-score-denom { font-size: 10px; color: var(--outline); font-weight: 600; }
+
+.lt-header-info { flex: 1; }
+.lt-verdict { font-family: var(--font-headline); font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+.lt-sector { font-size: 11px; color: var(--outline); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
+.lt-pos-size { font-size: 11px; color: var(--on-surf-var); background: var(--bg-highest); padding: 4px 10px; border-radius: var(--radius); display: inline-block; margin-top: 4px; }
+
+/* Insight chips */
+.lt-insight-row { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+.lt-insight-chip { flex: 1; min-width: 140px; padding: 8px 12px; border-radius: var(--radius); font-size: 11px; font-weight: 600; }
+.lt-insight-chip.green { background: rgba(64,229,108,0.08); border: 1px solid rgba(64,229,108,0.15); color: var(--secondary); }
+.lt-insight-chip.red   { background: rgba(163,0,38,0.08);   border: 1px solid rgba(163,0,38,0.15);   color: var(--on-tertiary-cont); }
+.lt-insight-chip .chip-label { display: block; font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.7; margin-bottom: 2px; }
+
+/* Hard rejects */
+.lt-rejects { background: rgba(163,0,38,0.06); border: 1px solid rgba(163,0,38,0.2); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 14px; }
+.lt-rejects-title { font-family: var(--font-headline); font-size: 12px; font-weight: 700; color: var(--on-tertiary-cont); margin-bottom: 6px; }
+.lt-rejects li { font-size: 12px; color: var(--on-surf-var); margin-left: 16px; }
+
+/* Pillar bars */
+.lt-pillars { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+.lt-pillar { }
+.lt-pillar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+.lt-pillar-name { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--on-surf-var); }
+.lt-pillar-score { font-family: var(--font-headline); font-size: 14px; font-weight: 700; }
+.lt-pillar-weight { font-size: 10px; color: var(--outline); }
+.lt-pillar-bar { height: 5px; background: var(--bg-highest); border-radius: 3px; overflow: hidden; }
+.lt-pillar-fill { height: 100%; border-radius: 3px; transition: width 1s ease; }
+.lt-pillar-signals { margin-top: 5px; }
+.lt-pillar-signal { font-size: 11px; color: var(--on-surf-var); line-height: 1.6; padding-left: 2px; }
+
+/* Exit triggers */
+.lt-exit-triggers { background: var(--bg-highest); border-radius: var(--radius-lg); padding: 12px 14px; margin-bottom: 12px; }
+.lt-exit-title { font-family: var(--font-headline); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--outline); margin-bottom: 8px; }
+.lt-exit-list { display: flex; flex-direction: column; gap: 4px; }
+.lt-exit-item { font-size: 11px; color: var(--on-surf-var); display: flex; align-items: flex-start; gap: 6px; }
+.lt-exit-item::before { content: "→"; color: var(--on-tertiary-cont); flex-shrink: 0; }
+
+/* Rebalance banner */
+.lt-rebalance { font-size: 11px; color: var(--outline); text-align: center; padding: 6px; border-top: 1px solid rgba(60,73,78,0.1); }
+
+/* Pillar color by score */
+.pillar-high  { background: linear-gradient(90deg, var(--secondary), #40e56c88); }
+.pillar-mid   { background: linear-gradient(90deg, var(--primary), #00d4ff88); }
+.pillar-low   { background: linear-gradient(90deg, #eab308, #f59e0b88); }
+.pillar-poor  { background: linear-gradient(90deg, var(--on-tertiary-cont), #ef444488); }
+
+/* Verdict colors */
+.verdict-hc   { color: var(--secondary); }
+.verdict-buy  { color: var(--primary); }
+.verdict-watch { color: #eab308; }
+.verdict-avoid { color: var(--on-tertiary-cont); }
+
 /* ════════════════════════════════════════
    STOCK HEADER
 ════════════════════════════════════════ */

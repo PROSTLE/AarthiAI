@@ -236,12 +236,142 @@ let loadVersion = 0;
 
 let searchTimeout = null;
 
-// Forecast tab switcher (Stitch UI)
+// ── Forecast tab switcher ────────────────────────────────────────────────────
 function switchForecastTab(el, tab) {
   document.querySelectorAll(".forecast-tab").forEach(t => t.classList.remove("active"));
   el.classList.add("active");
-  // Future: load different forecast data sets based on tab
+
+  const predSection = document.getElementById("predSection");
+  const ltPanel = document.getElementById("ltPanel");
+
+  if (tab === "long") {
+    predSection.classList.add("hidden");
+    ltPanel.classList.remove("hidden");
+    if (currentTicker) loadLongTerm(currentTicker);
+  } else {
+    // 5d forecast
+    ltPanel.classList.add("hidden");
+    if (currentTicker) predSection.classList.remove("hidden");
+  }
 }
+
+// ── Long-Term Analysis ───────────────────────────────────────────────────────
+let _ltLoaded = null;  // ticker last loaded
+
+async function loadLongTerm(ticker) {
+  if (!ticker) return;
+
+  const loader  = document.getElementById("ltLoader");
+  const results = document.getElementById("ltResults");
+  loader.style.display = "block";
+  results.classList.add("hidden");
+
+  try {
+    const res = await fetch(`${API}/api/long-term/${ticker}`);
+    if (!res.ok) throw new Error(await res.text());
+    const d = await res.json();
+    renderLongTerm(d);
+    _ltLoaded = ticker;
+  } catch(e) {
+    loader.innerHTML = `<p style="color:var(--on-tertiary-cont);font-size:13px;">⚠ Analysis failed: ${e.message}</p>`;
+  }
+}
+
+function renderLongTerm(d) {
+  const loader  = document.getElementById("ltLoader");
+  const results = document.getElementById("ltResults");
+
+  // Score ring animation (circumference = 2π×34 ≈ 213.6)
+  const circ = 213.6;
+  const fill  = (d.composite_score / 10) * circ;
+  const arc = document.getElementById("ltRingArc");
+  // Color by verdict
+  const ringColor = d.composite_score >= 8 ? "#40e56c" : d.composite_score >= 6 ? "#a8e8ff" : d.composite_score >= 4 ? "#eab308" : "#a30026";
+  arc.setAttribute("stroke", ringColor);
+  setTimeout(() => arc.setAttribute("stroke-dasharray", `${fill} ${circ}`), 100);
+
+  document.getElementById("ltScoreNum").textContent = d.composite_score.toFixed(1);
+
+  // Verdict
+  const vEl = document.getElementById("ltVerdict");
+  vEl.textContent = d.verdict;
+  vEl.className = "lt-verdict " + (
+    d.composite_score >= 8.5 ? "verdict-hc" :
+    d.composite_score >= 7   ? "verdict-buy" :
+    d.composite_score >= 5.5 ? "verdict-watch" : "verdict-avoid"
+  );
+
+  document.getElementById("ltSector").textContent = `Sector: ${d.sector.toUpperCase()} · Updated quarterly`;
+  document.getElementById("ltPosSize").textContent = `📐 Position: ${d.position_size}`;
+
+  // Key insights
+  const si = document.getElementById("ltStrongest");
+  si.innerHTML = `<span class="chip-label">💪 Strongest Signal</span>${d.key_insight.strongest}`;
+  const wi = document.getElementById("ltWeakest");
+  wi.innerHTML = `<span class="chip-label">⚠ Biggest Risk</span>${d.key_insight.biggest_risk}`;
+
+  // Hard rejects
+  const rw = document.getElementById("ltRejectsWrap");
+  const rl = document.getElementById("ltRejectsList");
+  if (d.hard_rejects && d.hard_rejects.length) {
+    rw.classList.remove("hidden");
+    rl.innerHTML = `<ul>${d.hard_rejects.map(r => `<li>${r}</li>`).join("")}</ul>`;
+  } else {
+    rw.classList.add("hidden");
+  }
+
+  // Pillar bars
+  const pillarMeta = [
+    { key: "fundamental", icon: "📊", label: "Fundamental Quality" },
+    { key: "technical",   icon: "📈", label: "Technical Entry" },
+    { key: "sentiment",   icon: "📰", label: "News & Sentiment" },
+    { key: "ownership",   icon: "🏛", label: "Ownership & Governance" },
+    { key: "growth",      icon: "🚀", label: "Growth Pipeline" },
+  ];
+  const pillarEl = document.getElementById("ltPillars");
+  pillarEl.innerHTML = pillarMeta.map(pm => {
+    const p = d.pillars[pm.key];
+    const sc = p.score;
+    const wt = Math.round(p.weight * 100);
+    const pct = (sc / 10) * 100;
+    const colorClass = sc >= 7 ? "pillar-high" : sc >= 5.5 ? "pillar-mid" : sc >= 4 ? "pillar-low" : "pillar-poor";
+    const signals = (p.signals || []).slice(0, 3).map(s =>
+      `<div class="lt-pillar-signal">${s}</div>`
+    ).join("");
+    return `
+      <div class="lt-pillar">
+        <div class="lt-pillar-header">
+          <span class="lt-pillar-name">${pm.icon} ${pm.label}</span>
+          <span>
+            <span class="lt-pillar-score" style="color:${sc>=7?'var(--secondary)':sc>=5.5?'var(--primary)':sc>=4?'#eab308':'var(--on-tertiary-cont)'}">${sc.toFixed(1)}</span>
+            <span class="lt-pillar-weight"> /10 · ${wt}% weight</span>
+          </span>
+        </div>
+        <div class="lt-pillar-bar"><div class="lt-pillar-fill ${colorClass}" style="width:0%" data-pct="${pct}"></div></div>
+        <div class="lt-pillar-signals">${signals}</div>
+      </div>
+    `;
+  }).join("");
+
+  // Animate pillar bars
+  setTimeout(() => {
+    document.querySelectorAll(".lt-pillar-fill").forEach(bar => {
+      bar.style.width = bar.dataset.pct + "%";
+    });
+  }, 150);
+
+  // Exit triggers
+  document.getElementById("ltExitList").innerHTML = (d.exit_triggers || []).map(t =>
+    `<div class="lt-exit-item">${t}</div>`
+  ).join("");
+
+  // Rebalance
+  document.getElementById("ltRebalance").textContent = `🔄 ${d.rebalance_cadence}`;
+
+  loader.style.display = "none";
+  results.classList.remove("hidden");
+}
+
 
 
 document.addEventListener("DOMContentLoaded", () => {

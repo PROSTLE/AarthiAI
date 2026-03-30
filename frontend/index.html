@@ -171,8 +171,7 @@
 
           <!-- Forecast tabs -->
           <div class="forecast-tabs">
-            <button class="forecast-tab active" onclick="switchForecastTab(this, 'main')">24H FORECAST</button>
-            <button class="forecast-tab" onclick="switchForecastTab(this, '5d')">5D PROJECTION</button>
+            <button class="forecast-tab active" onclick="switchForecastTab(this, '5d')">5-DAY FORECAST</button>
             <button class="forecast-tab" onclick="switchForecastTab(this, 'long')">LONG-TERM ANALYSIS</button>
           </div>
 
@@ -236,6 +235,68 @@
               <span class="llm-icon">🤖</span>
               <span class="llm-text" id="llmReasoningText"></span>
             </div>
+          </div>
+        </div>
+
+        <!-- Long-Term Analysis Panel -->
+        <div class="kinetic-card lt-panel hidden" id="ltPanel">
+          <!-- Loading state -->
+          <div id="ltLoader" class="lt-loader">
+            <div class="neural-dots"><span></span><span></span><span></span><span></span><span></span></div>
+            <div class="loader-brain">🧠</div>
+            <p class="loader-title">Running 5-Pillar Analysis</p>
+            <p class="loader-sub">Evaluating fundamentals, technicals, sentiment, ownership &amp; growth pipeline...</p>
+            <div class="loader-bar"><div class="loader-bar-fill"></div></div>
+          </div>
+
+          <!-- Results -->
+          <div id="ltResults" class="lt-results hidden">
+
+            <!-- Score header -->
+            <div class="lt-header">
+              <div class="lt-score-ring">
+                <svg viewBox="0 0 80 80" class="lt-ring-svg">
+                  <circle cx="40" cy="40" r="34" fill="none" stroke="rgba(60,73,78,0.3)" stroke-width="7"/>
+                  <circle id="ltRingArc" cx="40" cy="40" r="34" fill="none" stroke="#a8e8ff" stroke-width="7"
+                    stroke-dasharray="0 213.6" stroke-linecap="round"
+                    transform="rotate(-90 40 40)" style="transition:stroke-dasharray 1.2s ease"/>
+                </svg>
+                <div class="lt-ring-label">
+                  <span class="lt-score-num" id="ltScoreNum">—</span>
+                  <span class="lt-score-denom">/10</span>
+                </div>
+              </div>
+              <div class="lt-header-info">
+                <div class="lt-verdict" id="ltVerdict">—</div>
+                <div class="lt-sector" id="ltSector">Sector: —</div>
+                <div class="lt-pos-size" id="ltPosSize">—</div>
+              </div>
+            </div>
+
+            <!-- Key Insight -->  
+            <div class="lt-insight-row">
+              <div class="lt-insight-chip green" id="ltStrongest"></div>
+              <div class="lt-insight-chip red" id="ltWeakest"></div>
+            </div>
+
+            <!-- Hard rejects warning -->
+            <div id="ltRejectsWrap" class="lt-rejects hidden">
+              <div class="lt-rejects-title">🚫 Hard Filter Flags</div>
+              <div id="ltRejectsList"></div>
+            </div>
+
+            <!-- 5 Pillar Bars -->
+            <div class="lt-pillars" id="ltPillars"></div>
+
+            <!-- Exit triggers -->
+            <div class="lt-exit-triggers">
+              <div class="lt-exit-title">⚡ Fundamental Exit Triggers</div>
+              <div id="ltExitList" class="lt-exit-list"></div>
+            </div>
+
+            <!-- Rebalance note -->
+            <div class="lt-rebalance" id="ltRebalance"></div>
+
           </div>
         </div>
 
