@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AarthiAI — Company Analysis</title>
+  <meta name="description" content="AarthiAI Company Analysis — deep-dive financial intelligence on any NSE/BSE listed company including ratios, revenue history, and analyst consensus." />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    /* ── Company-page specific styles ── */
+    .company-header { margin-bottom: 28px; }
+    .company-header h1 { font-family: var(--font-headline); font-size: 32px; font-weight: 700; letter-spacing: -0.03em; }
+    .company-header p { color: var(--on-surf-var); font-size: 14px; margin-top: 6px; }
+
+    /* Search Bar */
+    .company-search-wrap { position: relative; max-width: 560px; margin-bottom: 28px; }
+    .company-search-input {
+      width: 100%;
+      padding: 14px 18px 14px 46px;
+      background: var(--bg-mid);
+      border: 1px solid rgba(60,73,78,0.25);
+      border-radius: var(--radius-lg);
+      color: var(--on-surface);
+      font-size: 15px;
+      font-family: var(--font-headline);
+      font-weight: 600;
+      transition: border-color 0.15s ease;
+    }
+    .company-search-input:focus { outline: none; border-color: var(--primary); }
+    .company-search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--outline); }
+    .company-search-btn {
+      position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+      padding: 8px 18px; background: var(--primary); color: var(--on-primary);
+      border: none; border-radius: var(--radius); cursor: pointer;
+      font-family: var(--font-headline); font-size: 13px; font-weight: 700;
+      transition: opacity 0.15s ease;
+    }
+    .company-search-btn:hover { opacity: 0.9; }
+    .search-suggestions {
+      position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+      background: var(--bg-mid); border: 1px solid rgba(60,73,78,0.2);
+      border-radius: var(--radius-lg); z-index: 50; overflow: hidden;
+      display: none;
+    }
+    .search-suggestions.open { display: block; }
+    .suggestion-item { padding: 10px 16px; cursor: pointer; font-size: 13px; display: flex; justify-content: space-between; }
+    .suggestion-item:hover { background: var(--bg-high); }
+    .sug-ticker { font-weight: 700; color: var(--primary); }
+    .sug-name { color: var(--on-surf-var); }
+
+    /* Company Content */
+    .company-content { display: none; }
+    .company-content.visible { display: block; }
+
+    /* Company Header Info */
+    .co-header-bar { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px; flex-wrap: wrap; gap: 16px; }
+    .co-header-left { flex: 1; min-width: 0; }
+    .co-badge-row { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+    .co-badge { padding: 3px 10px; border-radius: 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+    .badge-primary { background: rgba(168,232,255,0.1); color: var(--primary); }
+    .badge-secondary { background: rgba(64,229,108,0.1); color: var(--secondary); }
+    .badge-outline { background: rgba(133,147,152,0.1); color: var(--outline); }
+    .co-name { font-family: var(--font-headline); font-size: 36px; font-weight: 700; letter-spacing: -0.03em; color: var(--on-surface); }
+    .co-desc { font-size: 13px; color: var(--on-surf-var); margin-top: 8px; max-width: 680px; line-height: 1.6; }
+    .co-header-right { text-align: right; }
+    .co-price { font-family: var(--font-headline); font-size: 36px; font-weight: 700; }
+    .co-change { font-size: 13px; margin-top: 4px; }
+    .co-mktcap { font-size: 11px; color: var(--outline); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.08em; }
+
+    /* Bento Grid */
+    .company-bento { display: grid; grid-template-columns: repeat(12, 1fr); gap: 16px; }
+
+    .bento-span-8 { grid-column: span 8; }
+    .bento-span-4 { grid-column: span 4; }
+    .bento-span-12 { grid-column: span 12; }
+    @media (max-width: 1100px) { .bento-span-8, .bento-span-4, .bento-span-12 { grid-column: span 12; } }
+
+    /* Asset Cards */
+    .asset-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    @media (max-width: 600px) { .asset-grid { grid-template-columns: 1fr; } }
+    .asset-card { background: var(--bg-mid); border-radius: var(--radius-lg); padding: 18px; }
+    .asset-icon { font-size: 24px; margin-bottom: 10px; }
+    .asset-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--outline); font-weight: 700; }
+    .asset-value { font-family: var(--font-headline); font-size: 22px; font-weight: 700; margin: 6px 0; }
+    .asset-sub { font-size: 11px; color: var(--outline); }
+    .asset-bar-wrap { height: 3px; background: var(--bg-highest); border-radius: 2px; margin-top: 12px; overflow: hidden; }
+    .asset-bar-fill { height: 100%; background: var(--primary); border-radius: 2px; }
+
+    /* Chart area */
+    .co-chart-card { background: var(--bg-low); border: 1px solid rgba(60,73,78,0.12); border-radius: var(--radius-lg); padding: 22px; }
+    .co-chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .co-chart-header h3 { font-family: var(--font-headline); font-size: 16px; font-weight: 700; }
+    .chart-tab-btns { display: flex; gap: 4px; }
+    .chart-tab-btn { padding: 5px 12px; border-radius: var(--radius); font-family: var(--font-headline); font-size: 11px; font-weight: 700; border: none; cursor: pointer; background: var(--bg-highest); color: var(--on-surf-var); transition: all 0.15s ease; }
+    .chart-tab-btn.active { background: var(--primary); color: var(--on-primary); }
+    .co-chart-wrap { height: 220px; }
+
+    /* Analyst Consensus */
+    .analyst-card { background: var(--bg-high); border: 1px solid rgba(60,73,78,0.12); border-radius: var(--radius-lg); padding: 20px; border-left: 4px solid var(--secondary); }
+    .analyst-card h3 { font-family: var(--font-headline); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 14px; display: flex; align-items: center; gap: 6px; }
+    .analyst-target { font-family: var(--font-headline); font-size: 36px; font-weight: 700; }
+    .analyst-upside { display: inline-block; padding: 3px 10px; border-radius: 4px; font-size: 11px; font-weight: 700; background: rgba(64,229,108,0.1); color: var(--secondary); margin-top: 8px; }
+    .analyst-upside.down { background: rgba(163,0,38,0.1); color: var(--on-tertiary-cont); }
+    .analyst-rec { font-size: 13px; font-weight: 700; margin-top: 12px; color: var(--on-surface); }
+    .analyst-count { font-size: 11px; color: var(--outline); margin-top: 4px; }
+    .rec-bar { height: 6px; background: var(--bg-highest); border-radius: 3px; margin-top: 12px; overflow: hidden; }
+    .rec-bar-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--secondary), var(--primary)); }
+
+    /* Financial Vitals */
+    .vitals-card { background: var(--bg-lowest); border: 1px solid rgba(60,73,78,0.12); border-radius: var(--radius-lg); padding: 20px; }
+    .vitals-card h3 { font-family: var(--font-headline); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--on-surf-var); margin-bottom: 16px; }
+    .vital-row { display: flex; justify-content: space-between; align-items: flex-end; padding: 10px 0; border-bottom: 1px solid rgba(60,73,78,0.08); }
+    .vital-row:last-child { border-bottom: none; }
+    .vital-label { font-size: 13px; color: var(--on-surf-var); }
+    .vital-value { font-family: var(--font-headline); font-size: 17px; font-weight: 700; color: var(--on-surface); }
+    .vital-value.green { color: var(--secondary); }
+
+    /* 52W Range */
+    .range-52w { display: flex; align-items: center; gap: 10px; margin-top: 14px; padding: 12px; background: var(--bg-mid); border-radius: var(--radius); }
+    .range-52w-bar { flex: 1; height: 4px; background: var(--bg-highest); border-radius: 2px; position: relative; }
+    .range-52w-fill { height: 100%; border-radius: 2px; background: linear-gradient(90deg, var(--secondary), var(--primary)); }
+    .range-52w-marker { position: absolute; top: -4px; width: 12px; height: 12px; border-radius: 50%; background: var(--primary); transform: translateX(-50%); box-shadow: 0 0 6px rgba(168,232,255,0.5); }
+    .range-52w-label { font-size: 10px; color: var(--outline); font-weight: 700; }
+
+    /* Subsidiaries */
+    .subsidiaries-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    @media (max-width: 600px) { .subsidiaries-grid { grid-template-columns: repeat(2, 1fr); } }
+    .subsidiary-card { background: var(--bg-mid); border-radius: var(--radius-lg); padding: 14px; text-align: center; transition: transform 0.15s ease; cursor: pointer; }
+    .subsidiary-card:hover { transform: translateY(-2px); }
+    .sub-icon { width: 40px; height: 40px; border-radius: 50%; background: var(--bg-highest); display: flex; align-items: center; justify-content: center; margin: 0 auto 10px; }
+    .sub-name { font-size: 12px; font-weight: 700; }
+    .sub-type { font-size: 10px; color: var(--outline); margin-top: 2px; }
+
+    /* Loading & empty states */
+    .co-loading { text-align: center; padding: 60px 20px; color: var(--outline); }
+    .co-loading .material-symbols-outlined { font-size: 48px; display: block; margin-bottom: 16px; animation: spin 1.5s linear infinite; }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+    .co-empty { text-align: center; padding: 60px 20px; color: var(--outline); }
+    .co-empty .icon { font-size: 56px; margin-bottom: 16px; }
+    .co-empty h3 { font-family: var(--font-headline); font-size: 22px; color: var(--on-surface); margin-bottom: 8px; }
+    .co-empty-chips { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 14px; }
+    .chip { padding: 6px 14px; background: var(--bg-mid); border: 1px solid rgba(60,73,78,0.2); border-radius: 20px; font-size: 12px; font-weight: 700; color: var(--primary); cursor: pointer; }
+    .chip:hover { background: var(--bg-high); }
+  </style>
+</head>
+<body>
+
+<!-- TOP NAV -->
+<nav class="topnav">
+  <div class="topnav-left">
+    <a href="index.html" class="brand-logo"><span class="brand-aarthi">Aarthi</span><span class="brand-ai">AI</span></a>
+    <div class="topnav-links">
+      <a class="tnav-link" href="index.html">Markets</a>
+      <a class="tnav-link" href="mutual-funds.html">Funds</a>
+      <a class="tnav-link" href="sip.html">SIP</a>
+      <a class="tnav-link active" href="company.html">Companies</a>
+    </div>
+  </div>
+  <div class="topnav-center"></div>
+  <div class="topnav-right">
+    <div class="live-badge"><span class="live-dot"></span>LIVE</div>
+    <span class="material-symbols-outlined topnav-icon">notifications</span>
+    <span class="material-symbols-outlined topnav-icon">settings</span>
+    <div class="topnav-avatar">AI</div>
+  </div>
+</nav>
+
+<!-- SIDE NAV -->
+<aside class="sidenav">
+  <div class="sidenav-brand">
+    <div class="sidenav-brand-icon"><span class="material-symbols-outlined">query_stats</span></div>
+    <div>
+      <div class="sidenav-brand-name"><span class="brand-aarthi">Aarthi</span><span class="brand-ai">AI</span></div>
+      <div class="sidenav-brand-sub">HIGH-PRECISION MODE</div>
+    </div>
+  </div>
+  <nav class="sidenav-links">
+    <a class="sidenav-link" href="index.html"><span class="material-symbols-outlined">grid_view</span> Dashboard</a>
+    <a class="sidenav-link" href="mutual-funds.html"><span class="material-symbols-outlined">account_balance</span> Mutual Funds</a>
+    <a class="sidenav-link" href="sip.html"><span class="material-symbols-outlined">calculate</span> SIP Calculator</a>
+    <a class="sidenav-link active" href="company.html"><span class="material-symbols-outlined">analytics</span> Company Analysis</a>
+    <a class="sidenav-link" href="index.html"><span class="material-symbols-outlined">swap_vert</span> Orders</a>
+    <a class="sidenav-link" href="index.html"><span class="material-symbols-outlined">history</span> History</a>
+  </nav>
+  <div class="sidenav-bottom">
+    <a class="sidenav-link" href="#"><span class="material-symbols-outlined">help</span> Support</a>
+    <a class="sidenav-link" href="#"><span class="material-symbols-outlined">logout</span> Logout</a>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="main-wrap">
+  <div class="view-content">
+    <div class="company-header">
+      <h1>🔬 Company Intelligence</h1>
+      <p>Deep-dive financial analysis, ratios, and AI-powered insights for any NSE/BSE listed company</p>
+    </div>
+
+    <!-- Search -->
+    <div class="company-search-wrap">
+      <span class="material-symbols-outlined company-search-icon">search</span>
+      <input type="text" id="companySearch" class="company-search-input" placeholder="Search RELIANCE, TCS, HDFC..." autocomplete="off" oninput="handleSearchInput()" onkeydown="if(event.key==='Enter') loadCompany()" />
+      <button class="company-search-btn" onclick="loadCompany()">Analyze</button>
+      <div class="search-suggestions" id="searchSuggestions"></div>
+    </div>
+
+    <!-- Empty State -->
+    <div id="coEmpty">
+      <div class="co-empty">
+        <div class="icon">🏢</div>
+        <h3>Search Any Listed Company</h3>
+        <p>Enter a stock ticker or company name to load comprehensive financial intelligence.</p>
+        <div class="co-empty-chips">
+          <div class="chip" onclick="loadCompanyDirect('RELIANCE.NS')">RELIANCE</div>
+          <div class="chip" onclick="loadCompanyDirect('TCS.NS')">TCS</div>
+          <div class="chip" onclick="loadCompanyDirect('INFY.NS')">INFOSYS</div>
+          <div class="chip" onclick="loadCompanyDirect('HDFCBANK.NS')">HDFC BANK</div>
+          <div class="chip" onclick="loadCompanyDirect('TATAMOTORS.NS')">TATA MOTORS</div>
+          <div class="chip" onclick="loadCompanyDirect('ICICIBANK.NS')">ICICI BANK</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loading -->
+    <div id="coLoading" style="display:none">
+      <div class="co-loading">
+        <span class="material-symbols-outlined">autorenew</span>
+        <p>Loading company intelligence...</p>
+      </div>
+    </div>
+
+    <!-- Company Content -->
+    <div id="companyContent" class="company-content">
+
+      <!-- Company Header -->
+      <div class="co-header-bar" id="coHeaderBar"></div>
+
+      <!-- Bento Grid -->
+      <div class="company-bento">
+
+        <!-- Assets Held (col-span-8) -->
+        <div class="bento-span-8">
+          <div class="asset-grid" id="coAssetGrid"></div>
+        </div>
+
+        <!-- Analyst Consensus (col-span-4) -->
+        <div class="bento-span-4">
+          <div class="analyst-card" id="coAnalystCard">
+            <h3><span class="material-symbols-outlined" style="font-size:16px">track_changes</span> ANALYST CONSENSUS</h3>
+            <div style="color:var(--outline);font-size:13px">Loading...</div>
+          </div>
+        </div>
+
+        <!-- Chart (col-span-8) -->
+        <div class="bento-span-8">
+          <div class="co-chart-card">
+            <div class="co-chart-header">
+              <h3 id="coChartTitle">Revenue & Profit History</h3>
+              <div class="chart-tab-btns">
+                <button class="chart-tab-btn active" onclick="switchCoChart('revenue', this)">Revenue</button>
+                <button class="chart-tab-btn" onclick="switchCoChart('profit', this)">Profit</button>
+              </div>
+            </div>
+            <div class="co-chart-wrap"><canvas id="coChart"></canvas></div>
+          </div>
+        </div>
+
+        <!-- Financial Vitals (col-span-4) -->
+        <div class="bento-span-4">
+          <div class="vitals-card" id="coVitalsCard">
+            <h3>FINANCIAL VITALS</h3>
+            <div id="coVitalsList" style="color:var(--outline);font-size:13px">Loading...</div>
+          </div>
+        </div>
+
+        <!-- 52W + Trade Actions (col-span-4) -->
+        <div class="bento-span-4">
+          <div class="kinetic-card" style="padding:20px" id="co52wCard"></div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<footer class="app-footer">
+  <div class="footer-content">
+    <div class="footer-brand">
+      <span class="footer-logo"><span class="brand-aarthi">Aarthi</span><span class="brand-ai">AI</span></span>
+      <span class="footer-tagline">Where Machine Learning Meets Market Intelligence</span>
+    </div>
+    <div class="footer-tech">
+      <span>Built with</span>
+      <span class="tech-badge">Python</span><span class="tech-badge">yfinance</span><span class="tech-badge">FastAPI</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+const API = "http://127.0.0.1:8000";
+let coChart = null;
+let currentFinancials = {};
+
+async function handleSearchInput() {
+  const q = document.getElementById("companySearch").value.trim();
+  if (q.length < 2) { closeSuggestions(); return; }
+  try {
+    const res = await fetch(`${API}/api/search?q=${encodeURIComponent(q)}`);
+    const data = await res.json();
+    showSuggestions(data.results);
+  } catch(e) { closeSuggestions(); }
+}
+
+function showSuggestions(results) {
+  const el = document.getElementById("searchSuggestions");
+  if (!results.length) { closeSuggestions(); return; }
+  el.innerHTML = results.map(r =>
+    `<div class="suggestion-item" onclick="loadCompanyDirect('${r.ticker}')">
+      <span class="sug-ticker">${r.ticker}</span>
+      <span class="sug-name">${r.name}</span>
+    </div>`
+  ).join("");
+  el.classList.add("open");
+}
+function closeSuggestions() { document.getElementById("searchSuggestions").classList.remove("open"); }
+
+async function loadCompany() {
+  const q = document.getElementById("companySearch").value.trim().toUpperCase();
+  if (!q) return;
+  const ticker = q.includes(".") ? q : q + ".NS";
+  await loadCompanyDirect(ticker);
+}
+
+async function loadCompanyDirect(ticker) {
+  closeSuggestions();
+  document.getElementById("companySearch").value = ticker;
+  document.getElementById("coEmpty").style.display = "none";
+  document.getElementById("coLoading").style.display = "block";
+  document.getElementById("companyContent").classList.remove("visible");
+
+  try {
+    const res = await fetch(`${API}/api/company/${ticker}`);
+    if (!res.ok) throw new Error("Not found");
+    const d = await res.json();
+    renderCompany(d);
+    document.getElementById("coLoading").style.display = "none";
+    document.getElementById("companyContent").classList.add("visible");
+  } catch(e) {
+    document.getElementById("coLoading").style.display = "none";
+    document.getElementById("coEmpty").style.display = "block";
+    document.getElementById("coEmpty").innerHTML = `<div class="co-empty"><div class="icon">⚠️</div><h3>Could not load data</h3><p>Ensure the AarthiAI backend is running, or check the ticker symbol.</p><div class="co-empty-chips"><div class="chip" onclick="loadCompanyDirect('RELIANCE.NS')">RELIANCE</div><div class="chip" onclick="loadCompanyDirect('TCS.NS')">TCS</div></div></div>`;
+  }
+}
+
+function renderCompany(d) {
+  const fmt = v => v >= 1e12 ? "₹" + (v/1e12).toFixed(2) + "T" : v >= 1e9 ? "₹" + (v/1e9).toFixed(2) + "B" : v >= 1e7 ? "₹" + (v/1e7).toFixed(0) + "Cr" : "₹" + Math.round(v).toLocaleString("en-IN");
+  const priceColor = d.change_pct >= 0 ? "var(--secondary)" : "var(--on-tertiary-cont)";
+
+  // ── Header Bar ──
+  document.getElementById("coHeaderBar").innerHTML = `
+    <div class="co-header-left">
+      <div class="co-badge-row">
+        <span class="co-badge badge-primary">${d.exchange}: ${d.ticker}</span>
+        <span class="co-badge badge-secondary">${d.sector}</span>
+        <span class="co-badge badge-outline">${d.industry}</span>
+      </div>
+      <div class="co-name">${d.name}</div>
+      <div class="co-desc">${d.description || "Financial data powered by AarthiAI intelligence engine."}</div>
+    </div>
+    <div class="co-header-right">
+      <div class="co-price" style="color:${priceColor}">₹${d.price.toLocaleString("en-IN")} <span style="font-size:16px;color:${priceColor};opacity:0.75">${d.change_pct >= 0 ? "+" : ""}${d.change_pct}%</span></div>
+      <div class="co-mktcap">Market Cap: ${fmt(d.market_cap)}</div>
+    </div>
+  `;
+
+  // ── Assets ──
+  const assets = [
+    { icon: "🏭", label: "Fixed Assets", value: fmt(d.total_assets - d.total_cash - d.total_debt), desc: "Net fixed & operational assets", pct: 85 },
+    { icon: "📊", label: "Total Debt", value: fmt(d.total_debt), desc: `Book Value ₹${d.book_value}`, pct: 55 },
+    { icon: "💵", label: "Cash & Equiv.", value: fmt(d.total_cash), desc: "Liquid assets & equivalents", pct: 35 },
+  ];
+  document.getElementById("coAssetGrid").innerHTML = assets.map(a => `
+    <div class="asset-card">
+      <div class="asset-icon">${a.icon}</div>
+      <div class="asset-label">${a.label}</div>
+      <div class="asset-value">${a.value}</div>
+      <div class="asset-sub">${a.desc}</div>
+      <div class="asset-bar-wrap"><div class="asset-bar-fill" style="width:${a.pct}%"></div></div>
+    </div>
+  `).join("");
+
+  // ── Analyst Consensus ──
+  const upPct = d.analyst.upside_pct;
+  const recColors = { "Strong Buy": "var(--secondary)", "Buy": "var(--primary)", "Hold": "#eab308", "Sell": "var(--on-tertiary-cont)", "Strong Sell": "var(--on-tertiary-cont)" };
+  document.getElementById("coAnalystCard").innerHTML = `
+    <h3><span class="material-symbols-outlined" style="font-size:16px">track_changes</span> ANALYST CONSENSUS</h3>
+    <div class="analyst-target">₹${d.analyst.target_price.toLocaleString("en-IN")}</div>
+    <div class="analyst-upside ${upPct < 0 ? "down" : ""}">${upPct >= 0 ? "+" : ""}${upPct}% ${upPct >= 0 ? "Upside" : "Downside"}</div>
+    <div class="analyst-rec" style="color:${recColors[d.analyst.recommendation] || "var(--on-surface)"}">${d.analyst.recommendation}</div>
+    <div class="analyst-count">${d.analyst.analyst_count} Analyst Opinions</div>
+    <div class="rec-bar"><div class="rec-bar-fill" style="width:${Math.min(100, Math.max(0, 50 + upPct))}%"></div></div>
+  `;
+
+  // ── Vitals ──
+  const r = d.ratios;
+  const vitals = [
+    { label: "Price to Earnings (P/E)", value: r.pe_ratio || "N/A", green: false },
+    { label: "Price to Book (P/B)", value: r.pb_ratio || "N/A", green: false },
+    { label: "Return on Equity (ROE)", value: r.roe ? r.roe + "%" : "N/A", green: r.roe > 12 },
+    { label: "Debt to Equity", value: r.debt_to_equity || "N/A", green: false },
+    { label: "Dividend Yield", value: r.dividend_yield ? r.dividend_yield + "%" : "N/A", green: r.dividend_yield > 1 },
+    { label: "Beta (5Y)", value: r.beta || "N/A", green: false },
+    { label: "EPS (TTM)", value: r.eps ? "₹" + r.eps : "N/A", green: r.eps > 0 },
+    { label: "Profit Margin", value: r.profit_margin ? r.profit_margin + "%" : "N/A", green: r.profit_margin > 10 },
+  ];
+  document.getElementById("coVitalsList").innerHTML = vitals.map(v =>
+    `<div class="vital-row"><span class="vital-label">${v.label}</span><span class="vital-value ${v.green ? "green" : ""}">${v.value}</span></div>`
+  ).join("");
+
+  // ── 52W Range ──
+  const range = d.high_52w - d.low_52w;
+  const pos = range > 0 ? ((d.price - d.low_52w) / range) * 100 : 50;
+  document.getElementById("co52wCard").innerHTML = `
+    <h4 style="font-family:var(--font-headline);font-size:15px;font-weight:700;margin-bottom:16px">📏 52-Week Range</h4>
+    <div class="range-52w">
+      <span class="range-52w-label">₹${d.low_52w}</span>
+      <div class="range-52w-bar">
+        <div class="range-52w-fill" style="width:${pos}%"></div>
+        <div class="range-52w-marker" style="left:${pos}%"></div>
+      </div>
+      <span class="range-52w-label">₹${d.high_52w}</span>
+    </div>
+    <div style="text-align:center;margin-top:10px;font-size:12px;color:var(--outline)">Current: <strong style="color:var(--primary)">₹${d.price} (${pos.toFixed(0)}% of range)</strong></div>
+    <div style="margin-top:16px;display:flex;gap:10px">
+      <a href="index.html?ticker=${d.ticker}" style="flex:1;display:block;padding:10px;background:linear-gradient(135deg,var(--primary),#00d4ff);color:var(--on-primary);text-align:center;font-family:var(--font-headline);font-size:13px;font-weight:700;border-radius:var(--radius)">⚡ AI Predict</a>
+      <button onclick="window.open('https://www.nseindia.com','_blank')" style="padding:10px 14px;background:var(--bg-highest);color:var(--on-surf-var);border:1px solid rgba(60,73,78,0.15);border-radius:var(--radius);font-family:var(--font-headline);font-size:13px;font-weight:700;cursor:pointer">NSE →</button>
+    </div>
+  `;
+
+  // ── Chart (financials) ──
+  currentFinancials = d.financials;
+  renderCoChart("revenue");
+}
+
+function renderCoChart(type) {
+  const ctx = document.getElementById("coChart").getContext("2d");
+  if (coChart) coChart.destroy();
+
+  const fin = currentFinancials[type];
+  if (!fin || !fin.length) {
+    coChart = new Chart(ctx, { type: "bar", data: { labels: [], datasets: [] } });
+    return;
+  }
+  const sorted = [...fin].reverse();
+
+  coChart = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: sorted.map(r => "FY" + r.year),
+      datasets: [{
+        label: type === "revenue" ? "Revenue (₹Cr)" : "Net Profit (₹Cr)",
+        data: sorted.map(r => r.value),
+        backgroundColor: sorted.map((_, i) => i === sorted.length - 1 ? "rgba(168,232,255,0.7)" : "rgba(60,73,78,0.4)"),
+        borderRadius: 4,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: "#1a1c20",
+          borderColor: "rgba(60,73,78,0.3)",
+          borderWidth: 1,
+          callbacks: { label: ctx => `₹${ctx.raw.toLocaleString("en-IN")} Cr` }
+        }
+      },
+      scales: {
+        x: { grid: { color: "rgba(60,73,78,0.1)" }, ticks: { color: "#859398" } },
+        y: { grid: { color: "rgba(60,73,78,0.1)" }, ticks: { color: "#859398", callback: v => "₹" + v + "Cr" } }
+      }
+    }
+  });
+}
+
+function switchCoChart(type, btn) {
+  document.querySelectorAll(".chart-tab-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  renderCoChart(type);
+}
+
+// Close suggestions on outside click
+document.addEventListener("click", e => { if (!e.target.closest(".company-search-wrap")) closeSuggestions(); });
+
+// Auto-load from URL param
+const params = new URLSearchParams(window.location.search);
+if (params.get("ticker")) loadCompanyDirect(params.get("ticker"));
+</script>
+
+</body>
+</html>

@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AarthiAI — Mutual Funds Explorer</title>
+  <meta name="description" content="AarthiAI Mutual Funds Explorer — discover top-performing Indian equity, debt, hybrid and index funds with AI-powered predictions." />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    /* ── Page-specific overrides ── */
+    .mf-header { margin-bottom: 24px; }
+    .mf-header h1 { font-family: var(--font-headline); font-size: 32px; font-weight: 700; letter-spacing: -0.03em; }
+    .mf-header p { color: var(--on-surf-var); font-size: 14px; margin-top: 6px; }
+
+    .cat-filters { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 24px; }
+    .cat-btn {
+      padding: 7px 18px;
+      border-radius: var(--radius);
+      font-family: var(--font-headline);
+      font-size: 12px;
+      font-weight: 700;
+      background: var(--bg-mid);
+      border: 1px solid rgba(60,73,78,0.2);
+      color: var(--on-surf-var);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .cat-btn:hover { background: var(--bg-high); color: var(--on-surface); }
+    .cat-btn.active { background: var(--bg-highest); color: var(--primary); border-color: rgba(168,232,255,0.25); }
+
+    .mf-grid { display: grid; grid-template-columns: 1fr 300px; gap: 16px; align-items: start; }
+    @media (max-width: 1100px) { .mf-grid { grid-template-columns: 1fr; } }
+
+    /* Fund cards */
+    .fund-list { display: flex; flex-direction: column; gap: 10px; }
+    .fund-card {
+      background: var(--bg-low);
+      border: 1px solid rgba(60,73,78,0.12);
+      border-radius: var(--radius-lg);
+      padding: 16px 20px;
+      display: grid;
+      grid-template-columns: 48px 1fr auto auto auto;
+      align-items: center;
+      gap: 16px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .fund-card:hover { border-color: rgba(168,232,255,0.15); transform: translateX(2px); }
+
+    .fund-avatar {
+      width: 48px; height: 48px;
+      border-radius: var(--radius);
+      background: var(--bg-highest);
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-headline);
+      font-weight: 700;
+      font-size: 18px;
+      color: var(--primary);
+      flex-shrink: 0;
+    }
+
+    .fund-info h4 { font-family: var(--font-headline); font-size: 14px; font-weight: 700; color: var(--on-surface); margin-bottom: 4px; }
+    .fund-meta { display: flex; gap: 8px; flex-wrap: wrap; }
+    .fund-badge {
+      padding: 2px 7px;
+      border-radius: 3px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .badge-eq { background: rgba(168,232,255,0.1); color: var(--primary); }
+    .badge-debt { background: rgba(234,179,8,0.1); color: #eab308; }
+    .badge-hybrid { background: rgba(168,85,247,0.1); color: #a855f7; }
+    .badge-index { background: rgba(64,229,108,0.1); color: var(--secondary); }
+    .badge-risk-low { background: rgba(64,229,108,0.1); color: var(--secondary); }
+    .badge-risk-mod { background: rgba(234,179,8,0.1); color: #eab308; }
+    .badge-risk-high { background: rgba(239,68,68,0.1); color: #ef4444; }
+    .badge-risk-vh { background: rgba(163,0,38,0.12); color: var(--on-tertiary-cont); }
+    .badge-stars { color: #eab308; font-size: 11px; }
+
+    .fund-returns { text-align: right; }
+    .fr-value { font-family: var(--font-headline); font-size: 20px; font-weight: 700; color: var(--secondary); }
+    .fr-label { font-size: 10px; color: var(--outline); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 2px; }
+
+    .fund-stats { display: flex; flex-direction: column; gap: 4px; text-align: right; min-width: 100px; }
+    .fs-row { display: flex; justify-content: space-between; gap: 12px; font-size: 11px; }
+    .fs-label { color: var(--outline); }
+    .fs-val { font-weight: 600; color: var(--on-surface); }
+
+    .fund-action { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
+    .btn-invest {
+      padding: 8px 16px;
+      background: linear-gradient(135deg, var(--secondary), var(--sec-cont));
+      color: var(--on-secondary);
+      font-family: var(--font-headline);
+      font-size: 11px;
+      font-weight: 700;
+      border-radius: var(--radius);
+      border: none; cursor: pointer;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+    .btn-invest:hover { filter: brightness(1.1); }
+    .min-sip { font-size: 10px; color: var(--outline); }
+
+    /* Sidebar cards */
+    .mf-sidebar { display: flex; flex-direction: column; gap: 12px; }
+    .mfsb-card { background: var(--bg-low); border: 1px solid rgba(60,73,78,0.12); border-radius: var(--radius-lg); padding: 16px; }
+    .mfsb-title { font-family: var(--font-headline); font-size: 14px; font-weight: 700; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+
+    .alpha-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(60,73,78,0.08); }
+    .alpha-item:last-child { border-bottom: none; }
+    .alpha-name { font-size: 12px; font-weight: 600; color: var(--on-surface); max-width: 150px; }
+    .alpha-sub { font-size: 10px; color: var(--outline); }
+    .alpha-return { font-family: var(--font-headline); font-size: 14px; font-weight: 700; color: var(--secondary); }
+
+    /* Scatter chart */
+    .scatter-card { background: var(--bg-low); border: 1px solid rgba(60,73,78,0.12); border-radius: var(--radius-lg); padding: 20px; margin-bottom: 16px; }
+    .scatter-card h3 { font-family: var(--font-headline); font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+    .scatter-card p { font-size: 12px; color: var(--outline); margin-bottom: 16px; }
+    .scatter-chart-wrap { height: 240px; position: relative; }
+
+    /* AMC comparison table */
+    .amc-table-section { margin-top: 24px; }
+    .amc-table-section h2 { font-family: var(--font-headline); font-size: 20px; font-weight: 700; margin-bottom: 16px; }
+    .amc-table-wrap { overflow-x: auto; background: var(--bg-low); border-radius: var(--radius-lg); border: 1px solid rgba(60,73,78,0.12); }
+    .amc-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .amc-table th { padding: 12px 16px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--outline); font-weight: 700; text-align: left; border-bottom: 1px solid rgba(60,73,78,0.1); background: rgba(40,42,46,0.3); }
+    .amc-table td { padding: 14px 16px; border-bottom: 1px solid rgba(60,73,78,0.06); }
+    .amc-table tr:last-child td { border-bottom: none; }
+    .amc-table tr:hover td { background: rgba(28,30,34,0.5); }
+    .amc-name { font-weight: 700; color: var(--primary); }
+    .amc-return { font-family: var(--font-headline); font-weight: 700; color: var(--secondary); }
+    .conf-bar-wrap { height: 4px; background: var(--bg-highest); border-radius: 2px; overflow: hidden; width: 100px; }
+    .conf-bar-fill { height: 100%; background: var(--primary); border-radius: 2px; }
+
+    /* AI Signal Card */
+    .ai-signal-card {
+      background: linear-gradient(135deg, rgba(168,232,255,0.06), rgba(0,212,255,0.04));
+      border: 1px solid rgba(168,232,255,0.15);
+      border-radius: var(--radius-lg);
+      padding: 18px;
+      position: relative;
+      overflow: hidden;
+    }
+    .ai-signal-bg { position: absolute; right: -12px; bottom: -12px; font-size: 80px; opacity: 0.06; }
+    .ai-signal-title { font-family: var(--font-headline); font-size: 13px; font-weight: 700; color: var(--primary); margin-bottom: 8px; }
+    .ai-signal-text { font-size: 12px; color: var(--on-surf-var); line-height: 1.6; }
+    .ai-signal-link { display: inline-flex; align-items: center; gap: 4px; margin-top: 10px; font-size: 11px; font-weight: 700; color: var(--primary); text-transform: uppercase; letter-spacing: 0.06em; cursor: pointer; }
+    .ai-signal-link:hover { text-decoration: underline; }
+
+    /* Loading states */
+    .mf-loading { text-align: center; padding: 40px 0; color: var(--outline); font-size: 13px; }
+  </style>
+</head>
+<body>
+
+<!-- TOP NAV (reuse from index) -->
+<nav class="topnav">
+  <div class="topnav-left">
+    <a href="index.html" class="brand-logo"><span class="brand-aarthi">Aarthi</span><span class="brand-ai">AI</span></a>
+    <div class="topnav-links">
+      <a class="tnav-link" href="index.html">Markets</a>
+      <a class="tnav-link active" href="mutual-funds.html">Funds</a>
+      <a class="tnav-link" href="sip.html">SIP</a>
+      <a class="tnav-link" href="company.html">Companies</a>
+    </div>
+  </div>
+  <div class="topnav-center">
+    <div class="topnav-search-wrap">
+      <span class="material-symbols-outlined topnav-search-icon">search</span>
+      <input id="mfSearch" type="text" class="topnav-search-input" placeholder="Search funds, AMC…" autocomplete="off" />
+    </div>
+  </div>
+  <div class="topnav-right">
+    <div class="live-badge"><span class="live-dot"></span><span>LIVE</span></div>
+    <span class="material-symbols-outlined topnav-icon">notifications</span>
+    <span class="material-symbols-outlined topnav-icon">settings</span>
+    <div class="topnav-avatar">AI</div>
+  </div>
+</nav>
+
+<!-- SIDE NAV -->
+<aside class="sidenav">
+  <div class="sidenav-brand">
+    <div class="sidenav-brand-icon"><span class="material-symbols-outlined">query_stats</span></div>
+    <div>
+      <div class="sidenav-brand-name"><span class="brand-aarthi">Aarthi</span><span class="brand-ai">AI</span></div>
+      <div class="sidenav-brand-sub">HIGH-PRECISION MODE</div>
+    </div>
+  </div>
+  <nav class="sidenav-links">
+    <a class="sidenav-link" href="index.html"><span class="material-symbols-outlined">grid_view</span> Dashboard</a>
+    <a class="sidenav-link active" href="mutual-funds.html"><span class="material-symbols-outlined">account_balance</span> Mutual Funds</a>
+    <a class="sidenav-link" href="sip.html"><span class="material-symbols-outlined">calculate</span> SIP Calculator</a>
+    <a class="sidenav-link" href="company.html"><span class="material-symbols-outlined">analytics</span> Company Analysis</a>
+    <a class="sidenav-link" href="index.html"><span class="material-symbols-outlined">swap_vert</span> Orders</a>
+    <a class="sidenav-link" href="index.html"><span class="material-symbols-outlined">history</span> History</a>
+  </nav>
+  <div class="sidenav-bottom">
+    <a class="sidenav-link" href="#"><span class="material-symbols-outlined">help</span> Support</a>
+    <a class="sidenav-link" href="#"><span class="material-symbols-outlined">logout</span> Logout</a>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="main-wrap">
+  <div class="market-ticker-bar">
+    <div class="mkt-item"><span class="mkt-label">NIFTY 50</span><span class="mkt-price" id="mktNifty">—</span><span class="mkt-change" id="mktNiftyC">—</span></div>
+    <div class="mkt-sep">│</div>
+    <div class="mkt-item"><span class="mkt-label">SENSEX</span><span class="mkt-price" id="mktSensex">—</span><span class="mkt-change" id="mktSensexC">—</span></div>
+    <div class="mkt-sep">│</div>
+    <div class="mkt-item"><span class="mkt-label">India VIX</span><span class="mkt-price">14.2</span><span class="mkt-change up">Stable</span></div>
+  </div>
+
+  <div class="view-content">
+    <!-- Header -->
+    <div class="mf-header">
+      <h1>📊 Mutual Funds Explorer</h1>
+      <p>Discover high-precision AI-ranked Indian mutual funds across all categories</p>
+    </div>
+
+    <!-- Category Filters -->
+    <div class="cat-filters">
+      <button class="cat-btn active" data-cat="all" onclick="filterFunds('all', this)">All Funds</button>
+      <button class="cat-btn" data-cat="Equity" onclick="filterFunds('Equity', this)">Equity</button>
+      <button class="cat-btn" data-cat="Debt" onclick="filterFunds('Debt', this)">Debt</button>
+      <button class="cat-btn" data-cat="Hybrid" onclick="filterFunds('Hybrid', this)">Hybrid</button>
+      <button class="cat-btn" data-cat="Index" onclick="filterFunds('Index', this)">Index Funds</button>
+    </div>
+
+    <!-- Main Grid -->
+    <div class="mf-grid">
+
+      <!-- Left: Fund List -->
+      <div>
+        <!-- Scatter Chart -->
+        <div class="scatter-card">
+          <h3>Risk–Reward Analysis</h3>
+          <p>3-Year Annualized Return vs. Expense Ratio (bubble size = AUM)</p>
+          <div class="scatter-chart-wrap">
+            <canvas id="scatterChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Fund Cards -->
+        <div class="fund-list" id="fundList">
+          <div class="mf-loading">Loading funds...</div>
+        </div>
+
+        <!-- AMC Comparison Table -->
+        <div class="amc-table-section">
+          <h2>🏛️ Fund House Comparison</h2>
+          <div class="amc-table-wrap">
+            <table class="amc-table">
+              <thead>
+                <tr>
+                  <th>AMC Name</th>
+                  <th>Avg 3Y Return</th>
+                  <th>Avg Expense Ratio</th>
+                  <th>Risk Profile</th>
+                  <th>Predictive Confidence</th>
+                </tr>
+              </thead>
+              <tbody id="amcTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Sidebar -->
+      <div class="mf-sidebar">
+        <!-- AI Signal -->
+        <div class="ai-signal-card">
+          <div class="ai-signal-bg">🧠</div>
+          <div class="ai-signal-title">🤖 AI Predictive Signal</div>
+          <div class="ai-signal-text" id="aiSignalText">Loading AI signal...</div>
+          <div class="ai-signal-link">View Analysis <span class="material-symbols-outlined" style="font-size:12px">arrow_forward</span></div>
+        </div>
+
+        <!-- Top Alpha Generators -->
+        <div class="mfsb-card">
+          <div class="mfsb-title">🔥 Top Alpha Generators</div>
+          <div id="topAlphaList"><div class="mf-loading">Loading...</div></div>
+        </div>
+
+        <!-- Best Stability -->
+        <div class="mfsb-card">
+          <div class="mfsb-title">🛡️ Best Stability Score</div>
+          <div id="topStableList"><div class="mf-loading">Loading...</div></div>
+        </div>
+
+        <!-- Quick SIP CTA -->
+        <div class="kinetic-card" style="padding:18px; text-align:center;">
+          <div style="font-size:28px; margin-bottom:10px;">💰</div>
+          <h4 style="font-family:var(--font-headline); font-size:15px; font-weight:700; margin-bottom:8px;">Plan a SIP</h4>
+          <p style="font-size:12px; color:var(--on-surf-var); margin-bottom:14px;">Use our AI-powered SIP calculator to grow your wealth systematically.</p>
+          <a href="sip.html" style="display:block; padding:10px; background:linear-gradient(135deg,var(--secondary),var(--sec-cont)); color:var(--on-secondary); font-family:var(--font-headline); font-size:13px; font-weight:700; border-radius:var(--radius); text-align:center;">Start SIP Calculator →</a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<footer class="app-footer">
+  <div class="footer-content">
+    <div class="footer-brand">
+      <span class="footer-logo"><span class="brand-aarthi">Aarthi</span><span class="brand-ai">AI</span></span>
+      <span class="footer-tagline">Where Machine Learning Meets Market Intelligence</span>
+    </div>
+    <div class="footer-tech">
+      <span>Built with</span>
+      <span class="tech-badge">Python</span>
+      <span class="tech-badge">PyTorch</span>
+      <span class="tech-badge">FastAPI</span>
+      <span class="tech-badge">FinBERT</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+const API = "http://127.0.0.1:8000";
+let allFunds = [];
+let scatterChart = null;
+
+async function loadFunds(category = "all") {
+  try {
+    const url = category === "all" ? `${API}/api/mutual-funds` : `${API}/api/mutual-funds?category=${category}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    allFunds = data.funds;
+    renderFundList(allFunds);
+    renderScatterChart(allFunds);
+  } catch (e) {
+    document.getElementById("fundList").innerHTML = `<div class="mf-loading" style="color:var(--on-tertiary-cont)">⚠ Backend offline — start the FastAPI server</div>`;
+  }
+}
+
+async function loadTopFunds() {
+  try {
+    const res = await fetch(`${API}/api/mutual-funds/top`);
+    const data = await res.json();
+    renderAlphaList(data.top_alpha, "topAlphaList");
+    renderAlphaList(data.top_stable, "topStableList");
+    document.getElementById("aiSignalText").textContent = data.ai_signal;
+    renderAmcTable(allFunds);
+  } catch (e) {}
+}
+
+function renderFundList(funds) {
+  const el = document.getElementById("fundList");
+  if (!funds.length) { el.innerHTML = `<div class="mf-loading">No funds found in this category.</div>`; return; }
+  el.innerHTML = funds.map(f => {
+    const catClass = { Equity: "badge-eq", Debt: "badge-debt", Hybrid: "badge-hybrid", Index: "badge-index" }[f.category] || "badge-eq";
+    const riskClass = { Low: "badge-risk-low", Moderate: "badge-risk-mod", High: "badge-risk-high", "Very High": "badge-risk-vh" }[f.risk] || "badge-risk-mod";
+    const stars = "★".repeat(f.rating) + "☆".repeat(5 - f.rating);
+    const initial = f.amc[0];
+    return `
+      <div class="fund-card" onclick="openSipForFund('${f.name}')">
+        <div class="fund-avatar">${initial}</div>
+        <div class="fund-info">
+          <h4>${f.name}</h4>
+          <div class="fund-meta">
+            <span class="fund-badge ${catClass}">${f.sub_category}</span>
+            <span class="fund-badge ${riskClass}">${f.risk}</span>
+            <span class="badge-stars">${stars}</span>
+          </div>
+        </div>
+        <div class="fund-stats">
+          <div class="fs-row"><span class="fs-label">NAV</span><span class="fs-val">₹${f.nav.toFixed(2)}</span></div>
+          <div class="fs-row"><span class="fs-label">AUM</span><span class="fs-val">₹${(f.aum_cr/100).toFixed(0)}B</span></div>
+          <div class="fs-row"><span class="fs-label">Exp.</span><span class="fs-val">${f.expense_ratio}%</span></div>
+        </div>
+        <div class="fund-returns">
+          <div class="fr-value">+${f.return_1y}%</div>
+          <div class="fr-label">1Y Return</div>
+          <div style="font-size:11px;color:var(--outline);margin-top:4px">3Y: +${f.return_3y}% · 5Y: +${f.return_5y}%</div>
+        </div>
+        <div class="fund-action">
+          <button class="btn-invest" onclick="event.stopPropagation();openSipForFund('${f.name}')">Start SIP</button>
+          <div class="min-sip">Min ₹${f.min_sip}/mo</div>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+function renderAlphaList(funds, containerId) {
+  const el = document.getElementById(containerId);
+  el.innerHTML = funds.map(f => `
+    <div class="alpha-item">
+      <div>
+        <div class="alpha-name">${f.name}</div>
+        <div class="alpha-sub">${f.amc} · ${f.sub_category}</div>
+      </div>
+      <div class="alpha-return">+${f.return_1y}%</div>
+    </div>
+  `).join("");
+}
+
+function renderAmcTable(funds) {
+  const amcs = {};
+  funds.forEach(f => {
+    if (!amcs[f.amc]) amcs[f.amc] = { returns: [], expense: [], count: 0 };
+    amcs[f.amc].returns.push(f.return_3y);
+    amcs[f.amc].expense.push(f.expense_ratio);
+    amcs[f.amc].count++;
+  });
+  const rows = Object.entries(amcs).map(([amc, d]) => {
+    const avgReturn = (d.returns.reduce((a,b)=>a+b,0)/d.returns.length).toFixed(1);
+    const avgExp = (d.expense.reduce((a,b)=>a+b,0)/d.expense.length).toFixed(2);
+    const conf = Math.min(95, Math.round(50 + avgReturn * 1.8));
+    const risk = avgReturn > 20 ? "Aggressive" : avgReturn > 14 ? "Moderate" : "Conservative";
+    const riskColor = avgReturn > 20 ? "var(--on-tertiary-cont)" : avgReturn > 14 ? "#eab308" : "var(--secondary)";
+    return `<tr>
+      <td class="amc-name">${amc} Mutual Fund</td>
+      <td class="amc-return">+${avgReturn}%</td>
+      <td style="color:var(--on-surf-var)">${avgExp}%</td>
+      <td><span style="padding:2px 8px;border-radius:3px;background:rgba(255,255,255,0.05);color:${riskColor};font-size:11px;font-weight:700">${risk}</span></td>
+      <td><div class="conf-bar-wrap"><div class="conf-bar-fill" style="width:${conf}%"></div></div></td>
+    </tr>`;
+  });
+  document.getElementById("amcTableBody").innerHTML = rows.join("");
+}
+
+function renderScatterChart(funds) {
+  const ctx = document.getElementById("scatterChart").getContext("2d");
+  if (scatterChart) scatterChart.destroy();
+
+  const datasets = [{
+    label: "Funds",
+    data: funds.map(f => ({ x: f.expense_ratio, y: f.return_3y, label: f.name })),
+    backgroundColor: funds.map(f => {
+      if (f.return_3y > 25) return "rgba(64,229,108,0.7)";
+      if (f.return_3y > 15) return "rgba(168,232,255,0.7)";
+      return "rgba(133,147,152,0.5)";
+    }),
+    borderColor: "transparent",
+    pointRadius: funds.map(f => Math.max(6, Math.min(18, f.aum_cr / 5000))),
+    pointHoverRadius: funds.map(f => Math.max(8, Math.min(22, f.aum_cr / 5000))),
+  }];
+
+  scatterChart = new Chart(ctx, {
+    type: "scatter",
+    data: { datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: "#1a1c20",
+          borderColor: "rgba(60,73,78,0.3)",
+          borderWidth: 1,
+          callbacks: {
+            label: ctx => {
+              const d = ctx.raw;
+              return [`${d.label}`, `Expense: ${d.x}%`, `3Y Return: +${d.y}%`];
+            }
+          }
+        }
+      },
+      scales: {
+        x: { title: { display: true, text: "Expense Ratio (%)", color: "#859398", font: { size: 10 } }, grid: { color: "rgba(60,73,78,0.1)" }, ticks: { color: "#859398" } },
+        y: { title: { display: true, text: "3Y Annualized Return (%)", color: "#859398", font: { size: 10 } }, grid: { color: "rgba(60,73,78,0.1)" }, ticks: { color: "#859398" } }
+      }
+    }
+  });
+}
+
+function filterFunds(cat, btn) {
+  document.querySelectorAll(".cat-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  const filtered = cat === "all" ? allFunds : allFunds.filter(f => f.category === cat);
+  renderFundList(filtered);
+  renderScatterChart(filtered);
+}
+
+function openSipForFund(name) {
+  window.location.href = `sip.html?fund=${encodeURIComponent(name)}`;
+}
+
+// Load market indices
+async function loadIndices() {
+  try {
+    const res = await fetch(`${API}/api/market-indices`);
+    const data = await res.json();
+    data.indices.forEach(idx => {
+      if (idx.name === "NIFTY 50") {
+        document.getElementById("mktNifty").textContent = "₹" + idx.price.toLocaleString("en-IN");
+        const c = document.getElementById("mktNiftyC");
+        c.textContent = (idx.change_pct >= 0 ? "+" : "") + idx.change_pct + "%";
+        c.className = "mkt-change " + (idx.change_pct >= 0 ? "up" : "down");
+      }
+      if (idx.name === "SENSEX") {
+        document.getElementById("mktSensex").textContent = "₹" + idx.price.toLocaleString("en-IN");
+        const c = document.getElementById("mktSensexC");
+        c.textContent = (idx.change_pct >= 0 ? "+" : "") + idx.change_pct + "%";
+        c.className = "mkt-change " + (idx.change_pct >= 0 ? "up" : "down");
+      }
+    });
+  } catch(e) {}
+}
+
+// Search filter
+document.getElementById("mfSearch").addEventListener("input", e => {
+  const q = e.target.value.toLowerCase();
+  if (!q) { renderFundList(allFunds); return; }
+  const filtered = allFunds.filter(f => f.name.toLowerCase().includes(q) || f.amc.toLowerCase().includes(q) || f.sub_category.toLowerCase().includes(q));
+  renderFundList(filtered);
+});
+
+// Init
+loadFunds();
+loadTopFunds();
+loadIndices();
+</script>
+
+</body>
+</html>

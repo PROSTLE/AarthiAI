@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AarthiAI — SIP Calculator</title>
+  <meta name="description" content="AarthiAI SIP Calculator — plan your Systematic Investment Plan with AI-powered projections, step-up SIP, and scenario analysis." />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .sip-header { margin-bottom: 28px; }
+    .sip-header h1 { font-family: var(--font-headline); font-size: 32px; font-weight: 700; letter-spacing: -0.03em; }
+    .sip-header p { color: var(--on-surf-var); font-size: 14px; margin-top: 6px; }
+
+    .sip-layout { display: grid; grid-template-columns: 380px 1fr; gap: 20px; align-items: start; }
+    @media (max-width: 1000px) { .sip-layout { grid-template-columns: 1fr; } }
+
+    /* Form Panel */
+    .sip-form-panel { background: var(--bg-low); border: 1px solid rgba(60,73,78,0.12); border-radius: var(--radius-lg); padding: 24px; }
+    .sip-form-panel h3 { font-family: var(--font-headline); font-size: 16px; font-weight: 700; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
+
+    .form-group { margin-bottom: 20px; }
+    .form-label { display: flex; justify-content: space-between; align-items: center; font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; color: var(--outline); margin-bottom: 10px; }
+    .form-value { font-family: var(--font-headline); font-size: 14px; color: var(--primary); }
+
+    .form-input {
+      width: 100%;
+      padding: 10px 14px;
+      background: var(--bg-lowest);
+      border: 1px solid rgba(60,73,78,0.3);
+      border-radius: var(--radius);
+      color: var(--on-surface);
+      font-size: 14px;
+      font-family: var(--font-headline);
+      font-weight: 600;
+      transition: border-color 0.15s ease;
+    }
+    .form-input:focus { outline: none; border-color: var(--primary); }
+
+    input[type="range"] {
+      width: 100%;
+      height: 4px;
+      background: var(--bg-highest);
+      border-radius: 2px;
+      -webkit-appearance: none;
+      outline: none;
+      cursor: pointer;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      background: var(--primary);
+      box-shadow: 0 0 6px rgba(168,232,255,0.4);
+      cursor: pointer;
+    }
+
+    .range-labels { display: flex; justify-content: space-between; font-size: 10px; color: var(--outline); margin-top: 6px; }
+
+    .calc-btn {
+      width: 100%;
+      padding: 13px;
+      background: linear-gradient(135deg, var(--secondary), var(--sec-cont));
+      color: var(--on-secondary);
+      font-family: var(--font-headline);
+      font-size: 14px;
+      font-weight: 700;
+      border-radius: var(--radius-lg);
+      border: none; cursor: pointer;
+      transition: all 0.15s ease;
+      box-shadow: 0 4px 16px rgba(64,229,108,0.15);
+      margin-top: 8px;
+    }
+    .calc-btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
+
+    /* Results panel */
+    .sip-results { display: flex; flex-direction: column; gap: 16px; }
+
+    .results-metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    @media (max-width: 700px) { .results-metrics { grid-template-columns: repeat(2, 1fr); } }
+
+    .result-metric-card {
+      background: var(--bg-low);
+      border: 1px solid rgba(60,73,78,0.12);
+      border-radius: var(--radius-lg);
+      padding: 18px 16px;
+      text-align: center;
+    }
+    .rm-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--outline); font-weight: 700; margin-bottom: 8px; }
+    .rm-value { font-family: var(--font-headline); font-size: 22px; font-weight: 700; color: var(--on-surface); }
+    .rm-value.primary { color: var(--primary); }
+    .rm-value.secondary { color: var(--secondary); }
+    .rm-sub { font-size: 11px; color: var(--outline); margin-top: 4px; }
+
+    /* Chart card */
+    .chart-card-sip { background: var(--bg-low); border: 1px solid rgba(60,73,78,0.12); border-radius: var(--radius-lg); padding: 20px; }
+    .chart-card-sip h3 { font-family: var(--font-headline); font-size: 15px; font-weight: 700; margin-bottom: 16px; }
+    .sip-chart-wrap { height: 280px; }
+
+    /* Scenario cards */
+    .scenario-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    @media (max-width: 700px) { .scenario-grid { grid-template-columns: 1fr; } }
+
+    .scenario-card {
+      background: var(--bg-low);
+      border: 1px solid rgba(60,73,78,0.12);
+      border-radius: var(--radius-lg);
+      padding: 18px;
+      position: relative;
+      overflow: hidden;
+    }
+    .scenario-card.conservative { border-top: 3px solid #eab308; }
+    .scenario-card.moderate { border-top: 3px solid var(--primary); }
+    .scenario-card.aggressive { border-top: 3px solid var(--secondary); }
+
+    .sc-label { font-family: var(--font-headline); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
+    .sc-label.conservative { color: #eab308; }
+    .sc-label.moderate { color: var(--primary); }
+    .sc-label.aggressive { color: var(--secondary); }
+
+    .sc-return { font-size: 11px; color: var(--outline); margin-bottom: 12px; }
+    .sc-maturity { font-family: var(--font-headline); font-size: 22px; font-weight: 700; color: var(--on-surface); margin-bottom: 4px; }
+    .sc-gained { font-size: 12px; color: var(--secondary); font-weight: 600; }
+
+    /* Timeline table */
+    .timeline-table-wrap { background: var(--bg-low); border: 1px solid rgba(60,73,78,0.12); border-radius: var(--radius-lg); overflow: hidden; }
+    .timeline-table-wrap h3 { font-family: var(--font-headline); font-size: 15px; font-weight: 700; padding: 16px 20px; border-bottom: 1px solid rgba(60,73,78,0.1); }
+    .timeline-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .timeline-table th { padding: 10px 16px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--outline); font-weight: 700; text-align: left; background: rgba(40,42,46,0.3); }
+    .timeline-table td { padding: 10px 16px; border-top: 1px solid rgba(60,73,78,0.06); color: var(--on-surf-var); }
+    .timeline-table tr:hover td { background: rgba(28,30,34,0.5); }
+    .tl-corpus { font-family: var(--font-headline); font-weight: 700; color: var(--primary); }
+    .tl-gained { color: var(--secondary); font-weight: 600; }
+
+    .empty-results { padding: 60px 20px; text-align: center; color: var(--outline); }
+    .empty-results .icon { font-size: 48px; margin-bottom: 16px; }
+    .empty-results h3 { font-family: var(--font-headline); font-size: 20px; margin-bottom: 8px; color: var(--on-surface); }
+
+    .step-up-toggle { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+    .toggle-switch { position: relative; display: inline-block; width: 40px; height: 22px; }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider { position: absolute; cursor: pointer; inset: 0; background: var(--bg-highest); border-radius: 22px; transition: 0.2s; }
+    .toggle-slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background: var(--outline); border-radius: 50%; transition: 0.2s; }
+    input:checked + .toggle-slider { background: var(--primary); }
+    input:checked + .toggle-slider:before { transform: translateX(18px); background: var(--on-primary); }
+    .toggle-label { font-size: 13px; color: var(--on-surf-var); }
+  </style>
+</head>
+<body>
+
+<!-- TOP NAV -->
+<nav class="topnav">
+  <div class="topnav-left">
+    <a href="index.html" class="brand-logo"><span class="brand-aarthi">Aarthi</span><span class="brand-ai">AI</span></a>
+    <div class="topnav-links">
+      <a class="tnav-link" href="index.html">Markets</a>
+      <a class="tnav-link" href="mutual-funds.html">Funds</a>
+      <a class="tnav-link active" href="sip.html">SIP</a>
+      <a class="tnav-link" href="company.html">Companies</a>
+    </div>
+  </div>
+  <div class="topnav-center"></div>
+  <div class="topnav-right">
+    <div class="live-badge"><span class="live-dot"></span>LIVE</div>
+    <span class="material-symbols-outlined topnav-icon">notifications</span>
+    <span class="material-symbols-outlined topnav-icon">settings</span>
+    <div class="topnav-avatar">AI</div>
+  </div>
+</nav>
+
+<!-- SIDE NAV -->
+<aside class="sidenav">
+  <div class="sidenav-brand">
+    <div class="sidenav-brand-icon"><span class="material-symbols-outlined">query_stats</span></div>
+    <div>
+      <div class="sidenav-brand-name"><span class="brand-aarthi">Aarthi</span><span class="brand-ai">AI</span></div>
+      <div class="sidenav-brand-sub">HIGH-PRECISION MODE</div>
+    </div>
+  </div>
+  <nav class="sidenav-links">
+    <a class="sidenav-link" href="index.html"><span class="material-symbols-outlined">grid_view</span> Dashboard</a>
+    <a class="sidenav-link" href="mutual-funds.html"><span class="material-symbols-outlined">account_balance</span> Mutual Funds</a>
+    <a class="sidenav-link active" href="sip.html"><span class="material-symbols-outlined">calculate</span> SIP Calculator</a>
+    <a class="sidenav-link" href="company.html"><span class="material-symbols-outlined">analytics</span> Company Analysis</a>
+    <a class="sidenav-link" href="index.html"><span class="material-symbols-outlined">swap_vert</span> Orders</a>
+    <a class="sidenav-link" href="index.html"><span class="material-symbols-outlined">history</span> History</a>
+  </nav>
+  <div class="sidenav-bottom">
+    <a class="sidenav-link" href="#"><span class="material-symbols-outlined">help</span> Support</a>
+    <a class="sidenav-link" href="#"><span class="material-symbols-outlined">logout</span> Logout</a>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="main-wrap">
+  <div class="view-content">
+    <div class="sip-header">
+      <h1>💰 SIP Calculator</h1>
+      <p>Plan your Systematic Investment Plan with AI-powered projections and scenario analysis</p>
+    </div>
+
+    <div class="sip-layout">
+
+      <!-- Form -->
+      <div class="sip-form-panel">
+        <h3>📐 Configure SIP</h3>
+
+        <div class="form-group">
+          <div class="form-label">Monthly SIP Amount <span class="form-value" id="sipAmtDisplay">₹5,000</span></div>
+          <input type="range" id="sipAmtSlider" min="500" max="100000" step="500" value="5000" oninput="syncInput('sipAmt', this.value)" />
+          <div class="range-labels"><span>₹500</span><span>₹1L</span></div>
+          <input type="number" id="sipAmt" class="form-input" style="margin-top:10px" value="5000" min="500" max="100000" step="500" oninput="syncSlider('sipAmtSlider', this.value); updateDisplay('sipAmtDisplay','₹'+Number(this.value).toLocaleString('en-IN'))" />
+        </div>
+
+        <div class="form-group">
+          <div class="form-label">Investment Duration <span class="form-value" id="sipYrsDisplay">10 Years</span></div>
+          <input type="range" id="sipYrsSlider" min="1" max="40" step="1" value="10" oninput="syncInput('sipYrs', this.value)" />
+          <div class="range-labels"><span>1Y</span><span>40Y</span></div>
+          <input type="number" id="sipYrs" class="form-input" style="margin-top:10px" value="10" min="1" max="40" oninput="syncSlider('sipYrsSlider', this.value); updateDisplay('sipYrsDisplay', this.value+' Years')" />
+        </div>
+
+        <div class="form-group">
+          <div class="form-label">Expected Annual Return <span class="form-value" id="sipRetDisplay">12%</span></div>
+          <input type="range" id="sipRetSlider" min="4" max="30" step="0.5" value="12" oninput="syncInput('sipRet', this.value)" />
+          <div class="range-labels"><span>4%</span><span>30%</span></div>
+          <input type="number" id="sipRet" class="form-input" style="margin-top:10px" value="12" min="4" max="30" step="0.5" oninput="syncSlider('sipRetSlider', this.value); updateDisplay('sipRetDisplay', this.value+'%')" />
+        </div>
+
+        <!-- Step-up toggle -->
+        <div class="step-up-toggle">
+          <label class="toggle-switch">
+            <input type="checkbox" id="stepUpToggle" onchange="toggleStepUp()" />
+            <span class="toggle-slider"></span>
+          </label>
+          <span class="toggle-label">Enable Annual Step-Up SIP</span>
+        </div>
+
+        <div class="form-group hidden" id="stepUpGroup">
+          <div class="form-label">Annual Step-Up % <span class="form-value" id="stepUpDisplay">10%</span></div>
+          <input type="range" id="stepUpSlider" min="0" max="50" step="1" value="10" oninput="syncInput('stepUp', this.value)" />
+          <div class="range-labels"><span>0%</span><span>50%</span></div>
+          <input type="number" id="stepUp" class="form-input" style="margin-top:10px" value="10" min="0" max="50" oninput="syncSlider('stepUpSlider', this.value); updateDisplay('stepUpDisplay', this.value+'%')" />
+        </div>
+
+        <!-- Fund preset -->
+        <div class="form-group">
+          <div class="form-label">Fund Category</div>
+          <select id="fundCat" class="form-input" onchange="applyPreset(this.value)">
+            <option value="">Custom</option>
+            <option value="8">Debt Funds (~8%)</option>
+            <option value="12" selected>Diversified Equity (~12%)</option>
+            <option value="14">Mid Cap Equity (~14%)</option>
+            <option value="16">Small Cap / Thematic (~16%)</option>
+            <option value="20">Aggressive (Historical Max ~20%)</option>
+          </select>
+        </div>
+
+        <button class="calc-btn" onclick="calculateSIP()">⚡ Calculate SIP Returns</button>
+      </div>
+
+      <!-- Results -->
+      <div class="sip-results" id="sipResults">
+        <div class="empty-results">
+          <div class="icon">📈</div>
+          <h3>Configure & Calculate</h3>
+          <p>Set your SIP amount, duration, and expected return, then click <strong>Calculate</strong> to see your wealth projection.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<footer class="app-footer">
+  <div class="footer-content">
+    <div class="footer-brand">
+      <span class="footer-logo"><span class="brand-aarthi">Aarthi</span><span class="brand-ai">AI</span></span>
+      <span class="footer-tagline">Where Machine Learning Meets Market Intelligence</span>
+    </div>
+    <div class="footer-tech">
+      <span>Built with</span>
+      <span class="tech-badge">Python</span><span class="tech-badge">FastAPI</span><span class="tech-badge">Chart.js</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+const API = "http://127.0.0.1:8000";
+let projChart = null;
+
+function syncInput(id, val) {
+  document.getElementById(id).value = val;
+  const labels = { sipAmt: "₹", sipYrs: " Years", sipRet: "%" , stepUp: "%" };
+  const displayMap = { sipAmt: "sipAmtDisplay", sipYrs: "sipYrsDisplay", sipRet: "sipRetDisplay", stepUp: "stepUpDisplay" };
+  if (displayMap[id]) {
+    const prefix = id === "sipAmt" ? "₹" + Number(val).toLocaleString("en-IN") : val + (id === "sipYrs" ? " Years" : "%");
+    document.getElementById(displayMap[id]).textContent = id === "sipAmt" ? "₹" + Number(val).toLocaleString("en-IN") : val + (id === "sipYrs" ? " Years" : "%");
+  }
+}
+function syncSlider(sliderId, val) {
+  document.getElementById(sliderId).value = val;
+}
+function updateDisplay(id, text) {
+  document.getElementById(id).textContent = text;
+}
+function toggleStepUp() {
+  const on = document.getElementById("stepUpToggle").checked;
+  document.getElementById("stepUpGroup").classList.toggle("hidden", !on);
+}
+function applyPreset(val) {
+  if (!val) return;
+  document.getElementById("sipRet").value = val;
+  document.getElementById("sipRetSlider").value = val;
+  document.getElementById("sipRetDisplay").textContent = val + "%";
+}
+
+async function calculateSIP() {
+  const monthly_amount = parseFloat(document.getElementById("sipAmt").value);
+  const years = parseInt(document.getElementById("sipYrs").value);
+  const expected_return_pct = parseFloat(document.getElementById("sipRet").value);
+  const stepUpOn = document.getElementById("stepUpToggle").checked;
+  const step_up_pct = stepUpOn ? parseFloat(document.getElementById("stepUp").value) : 0;
+
+  try {
+    const res = await fetch(`${API}/api/sip/calculate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ monthly_amount, years, expected_return_pct, step_up_pct })
+    });
+    const data = await res.json();
+    renderResults(data);
+  } catch (e) {
+    // Fallback: compute client-side
+    const data = computeSIPClientSide(monthly_amount, years, expected_return_pct, step_up_pct);
+    renderResults(data);
+  }
+}
+
+function computeSIPClientSide(monthly, years, ret, stepUp) {
+  const r = ret / 100 / 12;
+  const su = stepUp / 100;
+  let corpus = 0, invested = 0, m = monthly;
+  const timeline = [];
+  for (let yr = 1; yr <= years; yr++) {
+    if (yr > 1 && su > 0) m *= (1 + su);
+    for (let mo = 0; mo < 12; mo++) { corpus = (corpus + m) * (1 + r); invested += m; }
+    timeline.push({ year: yr, invested: Math.round(invested), corpus: Math.round(corpus), wealth_gained: Math.round(corpus - invested) });
+  }
+
+  const scenarios = [
+    { label: "Conservative", return_pct: 8 },
+    { label: "Moderate", return_pct: 12 },
+    { label: "Aggressive", return_pct: 16 },
+  ].map(s => {
+    const sr = s.return_pct / 100 / 12;
+    let c = 0, inv = 0, sm = monthly;
+    for (let yr = 0; yr < years; yr++) {
+      if (yr > 0 && su > 0) sm *= (1 + su);
+      for (let mo = 0; mo < 12; mo++) { c = (c + sm) * (1 + sr); inv += sm; }
+    }
+    return { ...s, maturity_value: Math.round(c), total_invested: Math.round(inv), wealth_gained: Math.round(c - inv) };
+  });
+
+  return { monthly_amount: monthly, years, expected_return_pct: ret, step_up_pct: stepUp,
+    total_invested: Math.round(invested), maturity_value: Math.round(corpus),
+    wealth_gained: Math.round(corpus - invested), timeline, scenarios };
+}
+
+function renderResults(data) {
+  const fmt = v => "₹" + Math.round(v).toLocaleString("en-IN");
+  const wealthPct = data.total_invested > 0 ? ((data.wealth_gained / data.total_invested) * 100).toFixed(0) : 0;
+
+  const html = `
+    <!-- Summary Metrics -->
+    <div class="results-metrics">
+      <div class="result-metric-card">
+        <div class="rm-label">Total Invested</div>
+        <div class="rm-value">${fmt(data.total_invested)}</div>
+        <div class="rm-sub">Over ${data.years} years</div>
+      </div>
+      <div class="result-metric-card">
+        <div class="rm-label">Maturity Value</div>
+        <div class="rm-value primary">${fmt(data.maturity_value)}</div>
+        <div class="rm-sub">At ${data.expected_return_pct}% CAGR</div>
+      </div>
+      <div class="result-metric-card">
+        <div class="rm-label">Wealth Gained</div>
+        <div class="rm-value secondary">${fmt(data.wealth_gained)}</div>
+        <div class="rm-sub">+${wealthPct}% on investment</div>
+      </div>
+      <div class="result-metric-card">
+        <div class="rm-label">Monthly SIP</div>
+        <div class="rm-value">₹${Math.round(data.monthly_amount).toLocaleString("en-IN")}</div>
+        <div class="rm-sub">${data.step_up_pct > 0 ? "+" + data.step_up_pct + "% step-up/yr" : "Fixed SIP"}</div>
+      </div>
+    </div>
+
+    <!-- Projection Chart -->
+    <div class="chart-card-sip">
+      <h3>📈 Wealth Growth Projection</h3>
+      <div class="sip-chart-wrap"><canvas id="sipChart"></canvas></div>
+    </div>
+
+    <!-- Scenario Comparison -->
+    <div>
+      <h3 style="font-family:var(--font-headline);font-size:18px;font-weight:700;margin-bottom:14px">🎯 Scenario Comparison</h3>
+      <div class="scenario-grid">
+        ${data.scenarios.map(s => `
+          <div class="scenario-card ${s.label.toLowerCase()}">
+            <div class="sc-label ${s.label.toLowerCase()}">${s.label}</div>
+            <div class="sc-return">Assumed return: ${s.return_pct}% p.a.</div>
+            <div class="sc-maturity">${fmt(s.maturity_value)}</div>
+            <div class="sc-gained">Gains: ${fmt(s.wealth_gained)}</div>
+          </div>
+        `).join("")}
+      </div>
+    </div>
+
+    <!-- Year-by-Year Table -->
+    <div class="timeline-table-wrap">
+      <h3>📅 Year-by-Year Breakdown</h3>
+      <div style="overflow-x:auto">
+        <table class="timeline-table">
+          <thead>
+            <tr><th>Year</th><th>Total Invested</th><th>Corpus Value</th><th>Wealth Gained</th><th>Multiplier</th></tr>
+          </thead>
+          <tbody>
+            ${data.timeline.map(t => {
+              const mult = t.invested > 0 ? (t.corpus / t.invested).toFixed(2) : "1.00";
+              return `<tr>
+                <td>Year ${t.year}</td>
+                <td>${fmt(t.invested)}</td>
+                <td class="tl-corpus">${fmt(t.corpus)}</td>
+                <td class="tl-gained">${fmt(t.wealth_gained)}</td>
+                <td>${mult}x</td>
+              </tr>`;
+            }).join("")}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+
+  document.getElementById("sipResults").innerHTML = html;
+
+  // Render chart after DOM update
+  setTimeout(() => {
+    const ctx = document.getElementById("sipChart").getContext("2d");
+    if (projChart) projChart.destroy();
+    projChart = new Chart(ctx, {
+      type: "line",
+      data: {
+        labels: data.timeline.map(t => "Y" + t.year),
+        datasets: [
+          {
+            label: "Corpus Value",
+            data: data.timeline.map(t => t.corpus),
+            borderColor: "#a8e8ff",
+            backgroundColor: "rgba(168,232,255,0.08)",
+            fill: true,
+            tension: 0.4,
+            pointRadius: 0,
+            borderWidth: 2,
+          },
+          {
+            label: "Amount Invested",
+            data: data.timeline.map(t => t.invested),
+            borderColor: "rgba(133,147,152,0.6)",
+            backgroundColor: "rgba(133,147,152,0.04)",
+            fill: true,
+            tension: 0.4,
+            pointRadius: 0,
+            borderWidth: 1,
+            borderDash: [4, 4],
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: "index", intersect: false },
+        plugins: {
+          legend: { labels: { color: "#bbc9cf", font: { size: 11 }, boxWidth: 12 } },
+          tooltip: {
+            backgroundColor: "#1a1c20",
+            borderColor: "rgba(60,73,78,0.3)",
+            borderWidth: 1,
+            callbacks: {
+              label: ctx => `${ctx.dataset.label}: ₹${Math.round(ctx.raw).toLocaleString("en-IN")}`
+            }
+          }
+        },
+        scales: {
+          x: { grid: { color: "rgba(60,73,78,0.1)" }, ticks: { color: "#859398", maxTicksLimit: 10 } },
+          y: {
+            grid: { color: "rgba(60,73,78,0.1)" },
+            ticks: {
+              color: "#859398",
+              callback: v => "₹" + (v >= 1e7 ? (v/1e7).toFixed(1) + "Cr" : v >= 1e5 ? (v/1e5).toFixed(1) + "L" : v)
+            }
+          }
+        }
+      }
+    });
+  }, 50);
+}
+
+// Pre-fill fund from URL if coming from mutual-funds page
+const params = new URLSearchParams(window.location.search);
+if (params.get("fund")) {
+  document.getElementById("fundCat").value = "12";
+  applyPreset("12");
+}
+</script>
+
+</body>
+</html>
