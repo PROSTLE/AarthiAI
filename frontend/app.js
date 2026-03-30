@@ -3115,7 +3115,7 @@ function updateTopbarLiveBadge() {
   const badge = document.getElementById("liveBadge");
   const textEl = document.getElementById("liveBadgeText");
   const dot = badge ? badge.querySelector(".dot") : null;
-  if (textEl) textEl.textContent = live ? "LIVE" : "CLOSED";
+  if (textEl) textEl.textContent = live ? "LIVE" : "";
   if (badge) {
     badge.classList.remove("live", "closed");
     badge.classList.add(live ? "live" : "closed");
