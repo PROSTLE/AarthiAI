@@ -1,34 +1,48 @@
 /* ═══════════════════════════════════════════════════════════════
-   STOCKSENSE AI — KINETIC DESIGN SYSTEM
-   Dark Mode · Space Grotesk + Inter · Premium UI
+   AARTHI AI — WEBULL DESIGN SYSTEM
+   Deep Navy · Space Grotesk + Inter · Professional Trading UI
+   Palette sourced from webull.com
 ═══════════════════════════════════════════════════════════════ */
 
 /* ── TOKENS ── */
 :root {
-  --bg:            #111318;
-  --bg-low:        #1a1c20;
-  --bg-mid:        #1e2024;
-  --bg-high:       #282a2e;
-  --bg-highest:    #333539;
-  --bg-lowest:     #0c0e12;
+  /* ── Backgrounds (Webull deep navy family) ── */
+  --bg:            #060B1B;
+  --bg-low:        #0D1526;
+  --bg-mid:        #131B2E;
+  --bg-high:       #1A2440;
+  --bg-highest:    #1C2841;
+  --bg-lowest:     #030710;
 
-  --primary:       #a8e8ff;
-  --primary-dim:   #3cd7ff;
-  --primary-cont:  #00d4ff;
-  --secondary:     #40e56c;
-  --sec-cont:      #02c953;
-  --on-primary:    #003642;
-  --on-secondary:  #003912;
+  /* ── Primary accent: Webull electric blue ── */
+  --primary:       #1E61F3;
+  --primary-dim:   #1350CC;
+  --primary-cont:  #1EA0FF;
+  --primary-glow:  rgba(30,97,243,0.18);
 
-  --surface:       #111318;
-  --on-surface:    #e2e2e8;
-  --on-surf-var:   #bbc9cf;
-  --outline:       #859398;
-  --outline-var:   #3c494e;
+  /* ── Bullish green: Webull teal-green ── */
+  --secondary:     #00C087;
+  --sec-cont:      #00A372;
+  --on-secondary:  #003026;
 
-  --error:         #ffb4ab;
-  --on-error-cont: #ffdad6;
-  --on-tertiary-cont: #a30026;
+  /* ── Bearish red: Webull coral-red ── */
+  --bear:          #FF5B62;
+  --bear-dim:      #CC3A40;
+
+  /* ── On-color ── */
+  --on-primary:    #FFFFFF;
+
+  /* ── Surface & text ── */
+  --surface:       #060B1B;
+  --on-surface:    #E8ECF4;
+  --on-surf-var:   #A8B3CC;
+  --outline:       #5A6A8A;
+  --outline-var:   #1C2841;
+
+  /* ── Legacy error map → coral ── */
+  --error:         #FF5B62;
+  --on-error-cont: #FFD7D9;
+  --on-tertiary-cont: #FF5B62;
 
   --font-headline: 'Space Grotesk', sans-serif;
   --font-body:     'Inter', sans-serif;
@@ -74,8 +88,8 @@ input, select, textarea { font-family: inherit; }
   position: fixed;
   top: 0; left: 0; right: 0;
   height: var(--nav-h);
-  background: var(--bg);
-  border-bottom: 1px solid rgba(51,53,57,0.3);
+  background: var(--bg-low);
+  border-bottom: 1px solid rgba(28,40,65,0.8);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -108,7 +122,7 @@ input, select, textarea { font-family: inherit; }
 }
 
 .brand-ai {
-  color: var(--secondary);
+  color: var(--primary-cont);
   font-family: var(--font-headline);
   font-weight: 700;
 }
@@ -129,11 +143,11 @@ input, select, textarea { font-family: inherit; }
   transition: all var(--transition);
   letter-spacing: -0.01em;
 }
-.tnav-link:hover { opacity: 1; color: var(--primary); }
+.tnav-link:hover { opacity: 1; color: var(--primary-cont); }
 .tnav-link.active {
   opacity: 1;
-  color: var(--primary);
-  border-bottom: 2px solid var(--primary);
+  color: var(--primary-cont);
+  border-bottom: 2px solid var(--primary-cont);
 }
 
 .topnav-center {
@@ -207,12 +221,12 @@ input, select, textarea { font-family: inherit; }
   background: var(--secondary);
   animation: pulse 1.5s infinite;
 }
-.live-badge.closed .live-dot { background: var(--outline); }
+.live-badge.closed .live-dot { background: var(--outline); animation: none; }
 .live-badge.closed { color: var(--outline); }
 
 @keyframes pulse {
   0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.5; transform: scale(1.2); }
+  50% { opacity: 0.5; transform: scale(1.4); }
 }
 
 .topnav-icon {
@@ -226,7 +240,7 @@ input, select, textarea { font-family: inherit; }
 .topnav-avatar {
   width: 32px; height: 32px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--primary-cont), var(--primary));
+  background: linear-gradient(135deg, var(--primary), var(--primary-cont));
   color: var(--on-primary);
   font-family: var(--font-headline);
   font-size: 11px;
@@ -234,7 +248,7 @@ input, select, textarea { font-family: inherit; }
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(168,232,255,0.2);
+  border: 1px solid rgba(30,97,243,0.3);
 }
 
 /* ════════════════════════════════════════
@@ -247,7 +261,7 @@ input, select, textarea { font-family: inherit; }
   width: var(--side-w);
   height: calc(100vh - var(--nav-h));
   background: var(--bg-low);
-  border-right: 1px solid rgba(60,73,78,0.1);
+  border-right: 1px solid rgba(28,40,65,0.8);
   display: flex;
   flex-direction: column;
   padding: 16px 0;
@@ -334,7 +348,7 @@ input, select, textarea { font-family: inherit; }
 .upgrade-btn {
   width: 100%;
   padding: 10px;
-  background: linear-gradient(135deg, var(--primary), var(--primary-cont));
+  background: linear-gradient(135deg, var(--primary), var(--primary-dim));
   color: var(--on-primary);
   font-family: var(--font-headline);
   font-size: 12px;
@@ -342,7 +356,7 @@ input, select, textarea { font-family: inherit; }
   border-radius: var(--radius);
   transition: all var(--transition);
 }
-.upgrade-btn:hover { filter: brightness(1.1); }
+.upgrade-btn:hover { filter: brightness(1.15); }
 .upgrade-btn.trade-btn {
   background: linear-gradient(135deg, var(--secondary), var(--sec-cont));
   color: var(--on-secondary);
@@ -402,18 +416,18 @@ input, select, textarea { font-family: inherit; }
 /* Insight chips */
 .lt-insight-row { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
 .lt-insight-chip { flex: 1; min-width: 140px; padding: 8px 12px; border-radius: var(--radius); font-size: 11px; font-weight: 600; }
-.lt-insight-chip.green { background: rgba(64,229,108,0.08); border: 1px solid rgba(64,229,108,0.15); color: var(--secondary); }
-.lt-insight-chip.red   { background: rgba(163,0,38,0.08);   border: 1px solid rgba(163,0,38,0.15);   color: var(--on-tertiary-cont); }
+.lt-insight-chip.green { background: rgba(0,192,135,0.1); border: 1px solid rgba(0,192,135,0.2); color: var(--secondary); }
+.lt-insight-chip.red   { background: rgba(255,91,98,0.1);  border: 1px solid rgba(255,91,98,0.2); color: var(--bear); }
 .lt-insight-chip .chip-label { display: block; font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.7; margin-bottom: 2px; }
 
 /* Hard rejects */
-.lt-rejects { background: rgba(163,0,38,0.06); border: 1px solid rgba(163,0,38,0.2); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 14px; }
-.lt-rejects-title { font-family: var(--font-headline); font-size: 12px; font-weight: 700; color: var(--on-tertiary-cont); margin-bottom: 6px; }
+.lt-rejects { background: rgba(255,91,98,0.06); border: 1px solid rgba(255,91,98,0.2); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 14px; }
+.lt-rejects-title { font-family: var(--font-headline); font-size: 12px; font-weight: 700; color: var(--bear); margin-bottom: 6px; }
 .lt-rejects li { font-size: 12px; color: var(--on-surf-var); margin-left: 16px; }
 
 /* Pillar bars */
 .lt-pillars { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
-.lt-pillar { }
+.lt-pillar { display: block; }
 .lt-pillar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
 .lt-pillar-name { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--on-surf-var); }
 .lt-pillar-score { font-family: var(--font-headline); font-size: 14px; font-weight: 700; }
@@ -434,16 +448,16 @@ input, select, textarea { font-family: inherit; }
 .lt-rebalance { font-size: 11px; color: var(--outline); text-align: center; padding: 6px; border-top: 1px solid rgba(60,73,78,0.1); }
 
 /* Pillar color by score */
-.pillar-high  { background: linear-gradient(90deg, var(--secondary), #40e56c88); }
-.pillar-mid   { background: linear-gradient(90deg, var(--primary), #00d4ff88); }
-.pillar-low   { background: linear-gradient(90deg, #eab308, #f59e0b88); }
-.pillar-poor  { background: linear-gradient(90deg, var(--on-tertiary-cont), #ef444488); }
+.pillar-high  { background: linear-gradient(90deg, #00C087, #00C08777); }
+.pillar-mid   { background: linear-gradient(90deg, #1EA0FF, #1E61F388); }
+.pillar-low   { background: linear-gradient(90deg, #f59e0b, #f59e0b77); }
+.pillar-poor  { background: linear-gradient(90deg, #FF5B62, #FF5B6277); }
 
 /* Verdict colors */
 .verdict-hc   { color: var(--secondary); }
-.verdict-buy  { color: var(--primary); }
-.verdict-watch { color: #eab308; }
-.verdict-avoid { color: var(--on-tertiary-cont); }
+.verdict-buy  { color: var(--primary-cont); }
+.verdict-watch { color: #f59e0b; }
+.verdict-avoid { color: var(--bear); }
 
 /* ════════════════════════════════════════
    STOCK HEADER
@@ -603,8 +617,8 @@ canvas { width: 100% !important; height: 100% !important; }
   position: absolute;
   top: 12px;
   right: 12px;
-  background: rgba(64,229,108,0.15);
-  border: 1px solid rgba(64,229,108,0.25);
+  background: rgba(0,192,135,0.12);
+  border: 1px solid rgba(0,192,135,0.25);
   color: var(--secondary);
   font-size: 11px;
   font-weight: 700;
@@ -615,7 +629,7 @@ canvas { width: 100% !important; height: 100% !important; }
   pointer-events: none;
 }
 .chart-body:hover .chart-trade-btn { opacity: 1; pointer-events: all; }
-.chart-trade-btn:hover { background: rgba(64,229,108,0.25); }
+.chart-trade-btn:hover { background: rgba(0,192,135,0.22); }
 
 .chart-empty-state {
   position: absolute;
@@ -719,7 +733,7 @@ canvas { width: 100% !important; height: 100% !important; }
 .llm-insight {
   display: flex;
   gap: 8px;
-  background: var(--bg-lowest);
+  background: rgba(30,97,243,0.07);
   border-radius: var(--radius);
   padding: 12px;
   margin-top: 12px;
@@ -787,7 +801,7 @@ canvas { width: 100% !important; height: 100% !important; }
 .momentum-row { margin-bottom: 14px; }
 .momentum-label-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
 .momentum-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--on-surf-var); }
-.momentum-value { font-family: var(--font-headline); font-size: 12px; font-weight: 700; color: var(--primary); }
+.momentum-value { font-family: var(--font-headline); font-size: 12px; font-weight: 700; color: var(--primary-cont); }
 .momentum-bar-bg { height: 5px; background: var(--bg-lowest); border-radius: 3px; overflow: hidden; }
 .momentum-bar-fill { height: 100%; background: var(--primary); border-radius: 3px; transition: width 0.8s ease; }
 

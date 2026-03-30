@@ -1656,8 +1656,8 @@ function drawMainChart(data) {
   const lows = data.map((d) => d.low);
 
   const isUp = closes[closes.length - 1] >= closes[0];
-  const lineColor = isUp ? "#22c55e" : "#ef4444";
-  const fillColor = isUp ? "rgba(34,197,94,0.08)" : "rgba(239,68,68,0.08)";
+  const lineColor = isUp ? "#00C087" : "#FF5B62";
+  const fillColor = isUp ? "rgba(0,192,135,0.07)" : "rgba(255,91,98,0.07)";
 
   if (mainChart) mainChart.destroy();
 
@@ -1667,8 +1667,8 @@ function drawMainChart(data) {
       labels,
       datasets: [
         { label: "Close", data: closes, borderColor: lineColor, backgroundColor: fillColor, fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2 },
-        { label: "High", data: highs, borderColor: "rgba(34,197,94,0.2)", borderDash: [2, 4], pointRadius: 0, borderWidth: 1, fill: false },
-        { label: "Low", data: lows, borderColor: "rgba(239,68,68,0.2)", borderDash: [2, 4], pointRadius: 0, borderWidth: 1, fill: false },
+        { label: "High", data: highs, borderColor: "rgba(0,192,135,0.2)", borderDash: [2, 4], pointRadius: 0, borderWidth: 1, fill: false },
+        { label: "Low", data: lows, borderColor: "rgba(255,91,98,0.2)", borderDash: [2, 4], pointRadius: 0, borderWidth: 1, fill: false },
       ],
     },
     options: {
@@ -1677,11 +1677,11 @@ function drawMainChart(data) {
       interaction: { mode: "index", intersect: false },
       plugins: {
         legend: { labels: { color: "#6b7280", font: { size: 11 } } },
-        tooltip: { backgroundColor: "#1a1f2e", borderColor: "#242a38", borderWidth: 1, titleColor: "#fff", bodyColor: "#d1d5db" },
+        tooltip: { backgroundColor: "#0D1526", borderColor: "#1C2841", borderWidth: 1, titleColor: "#E8ECF4", bodyColor: "#A8B3CC" },
       },
       scales: {
-        x: { ticks: { color: "#4b5563", maxTicksLimit: 10, maxRotation: 0, font: { size: 10 } }, grid: { color: "#1f2937" } },
-        y: { ticks: { color: "#4b5563", font: { size: 10 } }, grid: { color: "#1f2937" } },
+        x: { ticks: { color: "#5A6A8A", maxTicksLimit: 10, maxRotation: 0, font: { size: 10 } }, grid: { color: "rgba(28,40,65,0.6)" } },
+        y: { ticks: { color: "#5A6A8A", font: { size: 10 } }, grid: { color: "rgba(28,40,65,0.6)" } },
       },
     },
   });
@@ -1692,8 +1692,8 @@ function drawVolumeChart(data) {
   const labels = data.map((d) => d.time);
   const volumes = data.map((d) => d.volume);
   const colors = data.map((d, i) => {
-    if (i === 0) return "rgba(59,130,246,0.5)";
-    return d.close >= data[i - 1].close ? "rgba(34,197,94,0.5)" : "rgba(239,68,68,0.5)";
+    if (i === 0) return "rgba(30,97,243,0.4)";
+    return d.close >= data[i - 1].close ? "rgba(0,192,135,0.5)" : "rgba(255,91,98,0.5)";
   });
 
   if (volumeChart) volumeChart.destroy();
@@ -1710,7 +1710,7 @@ function drawVolumeChart(data) {
       plugins: { legend: { display: false } },
       scales: {
         x: { display: false },
-        y: { ticks: { color: "#4b5563", font: { size: 9 } }, grid: { color: "#1f2937" } },
+        y: { ticks: { color: "#5A6A8A", font: { size: 9 } }, grid: { color: "rgba(28,40,65,0.6)" } },
       },
     },
   });
@@ -1921,16 +1921,16 @@ function drawPredictionChart(pred) {
         {
           label: "Historical",
           data: histData,
-          borderColor: "#3b82f6",
-          backgroundColor: "rgba(59,130,246,0.05)",
+          borderColor: "#1E61F3",
+          backgroundColor: "rgba(30,97,243,0.05)",
           fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2,
           order: 3,
         },
         {
           label: "Upper Band",
           data: bandUpper,
-          borderColor: "rgba(34,197,94,0.15)",
-          backgroundColor: "rgba(34,197,94,0.10)",
+          borderColor: "rgba(0,192,135,0.18)",
+          backgroundColor: "rgba(0,192,135,0.08)",
           fill: "+1", tension: 0.3, pointRadius: 0, borderWidth: 1,
           borderDash: [2, 4],
           order: 1,
@@ -1938,8 +1938,8 @@ function drawPredictionChart(pred) {
         {
           label: "Lower Band",
           data: bandLower,
-          borderColor: "rgba(34,197,94,0.15)",
-          backgroundColor: "rgba(34,197,94,0.10)",
+          borderColor: "rgba(0,192,135,0.18)",
+          backgroundColor: "rgba(0,192,135,0.08)",
           fill: false, tension: 0.3, pointRadius: 0, borderWidth: 1,
           borderDash: [2, 4],
           order: 1,
@@ -1947,14 +1947,14 @@ function drawPredictionChart(pred) {
         {
           label: `Forecast (${confidence}% confidence)`,
           data: predData,
-          borderColor: "#22c55e",
+          borderColor: "#00C087",
           borderDash: [6, 3],
           backgroundColor: "transparent",
           fill: false, tension: 0.3,
           pointRadius: (ctx) => ctx.dataIndex >= hist.length - 1 ? 5 : 0,
           borderWidth: 2.5,
-          pointBackgroundColor: "#22c55e",
-          pointBorderColor: "#0f1117",
+          pointBackgroundColor: "#00C087",
+          pointBorderColor: "#060B1B",
           pointBorderWidth: 1.5,
           order: 2,
         },
