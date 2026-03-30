@@ -1,0 +1,88 @@
+intraday:
+  orb_breakout_pct: 0.25
+  volume_confirm_multiplier: 1.5
+  vsr_strong: 2.5
+  vsr_extreme: 4.0
+  atr_stop_multiplier: 1.5
+  atr_target_multiplier: 2.5
+  rsi_long_min: 55
+  rsi_long_max: 75
+  rsi_short_min: 25
+  rsi_short_max: 45
+  rsi_exhaustion_high: 80
+  rsi_exhaustion_low: 20
+  vwap_deviation_pct: 0.4
+
+swing:
+  ema_short: 9
+  ema_long: 21
+  ema_trend: 50
+  rs_outperform_pct: 3.0
+  rs_underperform_pct: -3.0
+  bb_period: 20
+  bb_std: 2
+  stop_pct_below_swing_low: 2.0
+  max_holding_days: 15
+
+positional:
+  min_piotroski_score: 7
+  max_piotroski_exit: 3
+  min_altman_z: 1.1
+  safe_altman_z: 2.6
+  min_roe_largecap: 15.0
+  min_roe_midcap: 18.0
+  max_de_nonfinancial: 1.0
+  max_de_banking: 6.0
+  promoter_holding_flag_pct: 2.0
+  eps_growth_quarters_required: 3
+
+confidence:
+  semiauto_threshold: 75
+  fullauto_threshold: 82
+  aggressive_threshold: 68
+  weights:
+    ml_model: 0.30
+    technical: 0.25
+    sector_heat: 0.20
+    fundamental: 0.15
+    sentiment: 0.10
+
+risk:
+  max_daily_loss_pct: 2.0
+  max_single_trade_risk_pct: 1.5
+  max_intraday_positions: 5
+  max_swing_positions: 3
+  max_positional_positions: 2
+  max_stop_distance_pct: 2.0
+
+sector_heat:
+  weights:
+    news_sentiment: 0.25
+    fii_flow: 0.20
+    price_momentum: 0.20
+    global_correlation: 0.20
+    options_pcr: 0.15
+  pcr_bullish_above: 1.2
+  pcr_bearish_below: 0.8
+
+sentiment:
+  finbert_half_life_hours: 4.0
+
+behavioral:
+  interaction_weights:
+    watchlist_add: 3
+    alert_triggered: 2
+    trade_executed: 5
+    held_5days: 4
+    exited_at_profit: 6
+  svd_components: 50
+  kmeans_clusters: 6
+  retrain_lookback_days: 90
+
+market:
+  open_time: "09:15"
+  close_time: "15:30"
+  intraday_square_off: "15:15"
+  exchange: "NSE"
+  product_intraday: "MIS"
+  product_delivery: "CNC"
