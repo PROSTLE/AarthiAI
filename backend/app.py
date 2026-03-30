@@ -855,8 +855,9 @@ def company_analysis(ticker: str):
         raise HTTPException(status_code=400, detail=str(e))
 
 
-# ── Mutual Funds API ──────────────────────────────────────────────────────────
+# ── Mutual Funds API (served from fund_intelligence.py FUND_UNIVERSE below) ──
 
+# Legacy MF_DATABASE removed — all fund routes now use FUND_UNIVERSE from fund_intelligence.py
 MF_DATABASE = [
     # Equity - Large Cap
     {"name": "SBI Bluechip Fund Direct", "amc": "SBI", "category": "Equity", "sub_category": "Large Cap",
@@ -910,25 +911,8 @@ MF_DATABASE = [
 ]
 
 
-@app.get("/api/mutual-funds")
-def mutual_funds(category: str = Query("all")):
-    """Return curated list of Indian mutual funds, optionally filtered by category."""
-    data = MF_DATABASE
-    if category.lower() != "all":
-        data = [f for f in MF_DATABASE if f["category"].lower() == category.lower()]
-    return {"funds": data, "count": len(data), "categories": ["Equity", "Debt", "Hybrid", "Index"]}
-
-
-@app.get("/api/mutual-funds/top")
-def mutual_funds_top():
-    """Return top performers and AI signal."""
-    top_alpha = sorted(MF_DATABASE, key=lambda x: x["return_1y"], reverse=True)[:4]
-    top_stable = sorted(MF_DATABASE, key=lambda x: x.get("return_3y", 0) / max(0.1, x["expense_ratio"]), reverse=True)[:4]
-    return {
-        "top_alpha": top_alpha,
-        "top_stable": top_stable,
-        "ai_signal": "Indian Large-cap equity funds showing 84% probability of outperformed alpha in Q4 based on RBI interest rate trajectories.",
-    }
+# NOTE: /api/mutual-funds and /api/mutual-funds/top are defined below (lines ~1012+)
+# using FUND_UNIVERSE from fund_intelligence.py for richer data.
 
 
 # ── SIP Calculator API ────────────────────────────────────────────────────────
@@ -1010,40 +994,37 @@ def sip_calculate(req: SIPRequest):
 # ════════════════════════════════════════════════════════════════════════════
 
 @app.get("/api/mutual-funds")
-def get_mutual_funds():
+def get_mutual_funds(category: str = Query("all")):
     """
-    Return the curated fund universe with static metadata.
-    Fast endpoint — no yfinance calls, used to populate the fund list.
+    Return per-fund genuine data from MF_DATABASE.
+    Supports filtering by category: Equity, Debt, Hybrid, Index (Index Funds).
     """
+    CAT_MAP = {"Index Funds": "Index", "index funds": "Index", "index": "Index"}
+
     funds_out = []
-    for f in FUND_UNIVERSE:
+    for f in MF_DATABASE:
+        f_cat = f["category"]
+        # Filter logic
+        if category.lower() != "all":
+            query_cat = CAT_MAP.get(category, category).lower()
+            if f_cat.lower() != query_cat:
+                continue
         funds_out.append({
             "name":          f["name"],
-            "amc":           f["name"].split()[0],
+            "amc":           f["amc"],
             "category":      f["category"],
-            "sub_category":  f["category"],
-            "risk":          {
-                "Small Cap": "Very High", "Mid Cap": "High",
-                "Flexi Cap": "High",      "ELSS":     "High",
-                "Large Cap": "Moderate",  "Hybrid":   "Moderate",
-                "Debt":      "Low",
-            }.get(f["category"], "Moderate"),
-            "rating":        {"Small Cap": 4, "Mid Cap": 4, "Flexi Cap": 5,
-                              "Large Cap": 5, "ELSS": 4, "Hybrid": 3, "Debt": 3}.get(f["category"], 4),
-            "nav":           100.0,
-            "aum_cr":        {"Small Cap": 15000, "Mid Cap": 22000, "Flexi Cap": 45000,
-                              "Large Cap": 38000, "ELSS": 12000, "Hybrid": 18000, "Debt": 8000}.get(f["category"], 10000),
-            "expense_ratio": {"Small Cap": 1.62, "Mid Cap": 1.48, "Flexi Cap": 1.05,
-                              "Large Cap": 0.92, "ELSS": 1.35, "Hybrid": 0.98, "Debt": 0.45}.get(f["category"], 1.0),
-            "return_1y":     {"Small Cap": 31.2, "Mid Cap": 26.4, "Flexi Cap": 22.1,
-                              "Large Cap": 17.8, "ELSS": 24.5, "Hybrid": 14.2, "Debt": 7.8}.get(f["category"], 15.0),
-            "return_3y":     {"Small Cap": 28.4, "Mid Cap": 23.1, "Flexi Cap": 19.8,
-                              "Large Cap": 15.2, "ELSS": 21.6, "Hybrid": 12.4, "Debt": 7.2}.get(f["category"], 13.0),
-            "return_5y":     {"Small Cap": 24.6, "Mid Cap": 20.3, "Flexi Cap": 17.5,
-                              "Large Cap": 13.8, "ELSS": 18.9, "Hybrid": 11.1, "Debt": 7.0}.get(f["category"], 12.0),
+            "sub_category":  f["sub_category"],
+            "risk":          f["risk"],
+            "rating":        f["rating"],
+            "nav":           f["nav"],
+            "aum_cr":        f["aum_cr"],
+            "expense_ratio": f["expense_ratio"],
+            "return_1y":     f["return_1y"],
+            "return_3y":     f["return_3y"],
+            "return_5y":     f["return_5y"],
             "min_sip":       f["min_sip"],
-            "lock_in":       f["lock_in"],
-            "ticker":        f["ticker"],
+            "lock_in":       0,
+            "ticker":        "",
         })
     return {"funds": funds_out}
 
@@ -1135,7 +1116,12 @@ def get_single_fund_brief(fund_name: str):
     if not match:
         raise HTTPException(status_code=404, detail=f"Fund '{fund_name}' not found in universe")
     try:
-        result = analyze_fund(match)
+        macro = {
+            "repo_rate": RBI_REPO_RATE,
+            "cpi":       CPI_INFLATION,
+            "nifty_pe":  NIFTY_PE_RATIO,
+        }
+        result = analyze_fund(match, macro)
         fin    = fetch_fundamentals(match["ticker"])
         pio    = piotroski_f_score(fin)
         alt    = altman_z_score(fin)

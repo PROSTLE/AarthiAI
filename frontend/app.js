@@ -1,8 +1,193 @@
+/* ══════════════════════════════════════════════════════════════
+   AARTHIAI LANDING PAGE JAVASCRIPT
+   Globe, particles, scroll animations, stock cards, analyzer form
+══════════════════════════════════════════════════════════════ */
+
+// ─── Landing Page Data ─────────────────────────────────────
+const LP_API_URL = 'http://localhost:8000/analyze';
+let lpScene, lpCamera, lpRenderer, lpGlobe, lpClouds;
+let lpScrollProgress = 0;
+let lpLiteracyScore = 1;
+let lpCurrentStep = 1;
+
+const LP_STOCKS = [
+  { symbol:'RELIANCE', name:'Reliance Industries', price:1348.00, pct:+0.17, logo:'RIL', chart:[1320,1335,1328,1342,1338,1345,1340,1348] },
+  { symbol:'TCS', name:'Tata Consultancy Services', price:2389.80, pct:+0.78, logo:'TCS', chart:[2350,2365,2358,2374,2380,2372,2385,2390] },
+  { symbol:'HDFCBANK', name:'HDFC Bank', price:756.20, pct:-0.41, logo:'HDB', chart:[762,758,760,755,757,753,758,756] },
+  { symbol:'INFY', name:'Infosys Limited', price:1269.70, pct:+0.98, logo:'INF', chart:[1250,1258,1255,1262,1268,1260,1265,1270] },
+  { symbol:'BHARTIARTL', name:'Bharti Airtel', price:1844.00, pct:+1.35, logo:'AIR', chart:[1800,1815,1808,1825,1830,1838,1835,1844] },
+  { symbol:'ICICIBANK', name:'ICICI Bank', price:1234.00, pct:+0.67, logo:'ICI', chart:[1218,1225,1220,1228,1230,1226,1232,1234] },
+  { symbol:'BAJFINANCE', name:'Bajaj Finance', price:844.00, pct:-0.66, logo:'BAJ', chart:[855,850,852,848,846,850,845,844] },
+  { symbol:'HUL', name:'Hindustan Unilever', price:2074.00, pct:+0.77, logo:'HUL', chart:[2045,2055,2050,2060,2065,2058,2068,2074] },
+  { symbol:'ITC', name:'ITC Limited', price:295.00, pct:+0.63, logo:'ITC', chart:[290,292,291,293,292,294,293,295] }
+];
+
+const LP_TYPE_COLORS = {
+  emergency_fund:'#ef5350', sip_mutual_fund:'#609E45', index_fund:'#4ADE80',
+  ipo:'#ffa726', short_term:'#26c6da', long_term_equity:'#8b5cf6',
+  liquid_fund:'#78909c', debt_payoff:'#dc2626'
+};
+
+// ─── Enter Trading Terminal ────────────────────────────────
+function enterTradingTerminal() {
+  const lp = document.getElementById('landing-page');
+  if (!lp) return;
+  lp.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+  lp.style.opacity = '0';
+  lp.style.transform = 'scale(0.97)';
+  setTimeout(() => {
+    lp.classList.remove('visible');
+    lp.style.opacity = ''; lp.style.transform = '';
+    document.body.style.overflow = '';
+    // Cleanup
+    if (lpRenderer) { lpRenderer.dispose(); const c = document.getElementById('lp-globe-container'); if(c) c.innerHTML=''; }
+    if (typeof ScrollTrigger !== 'undefined') ScrollTrigger.getAll().forEach(t=>t.kill());
+  }, 500);
+}
+
+// ─── Globe Init ───────────────────────────────────────────
+function lpInitGlobe() {
+  const container = document.getElementById('lp-globe-container');
+  if (!container || typeof THREE === 'undefined') return;
+  lpScene = new THREE.Scene();
+  lpCamera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 1000);
+  lpCamera.position.set(0,0,5);
+  lpRenderer = new THREE.WebGLRenderer({antialias:true,alpha:true});
+  lpRenderer.setSize(window.innerWidth,window.innerHeight);
+  lpRenderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+  lpRenderer.setClearColor(0x000000,0);
+  container.appendChild(lpRenderer.domElement);
+  lpScene.add(new THREE.AmbientLight(0x404060,0.6));
+  const sun=new THREE.DirectionalLight(0xffffff,1.4); sun.position.set(5,3,5); lpScene.add(sun);
+  const rim=new THREE.DirectionalLight(0x4f8cff,0.4); rim.position.set(-5,-2,-5); lpScene.add(rim);
+  lpCreateEarth(); lpCreateStars();
+  window.addEventListener('resize',lpOnResize);
+  lpAnimate();
+}
+function lpCreateEarth(){
+  const geo=new THREE.SphereGeometry(1.5,64,64),loader=new THREE.TextureLoader();
+  const mat=new THREE.MeshPhongMaterial({color:0x0d2137,shininess:25,specular:new THREE.Color(0x1a3050)});
+  lpGlobe=new THREE.Mesh(geo,mat); lpScene.add(lpGlobe);
+  const loaded=(tex)=>{lpGlobe.material.map=tex;lpGlobe.material.color.set(0xffffff);lpGlobe.material.needsUpdate=true;};
+  loader.load('https://unpkg.com/three-globe@2.41.12/example/img/earth-blue-marble.jpg',loaded,undefined,
+    ()=>loader.load('https://cdn.jsdelivr.net/npm/three-globe@2.41.12/example/img/earth-blue-marble.jpg',loaded,undefined,()=>lpProceduralEarth(lpGlobe)));
+  const atmMat=new THREE.ShaderMaterial({
+    vertexShader:`varying vec3 vN;void main(){vN=normalize(normalMatrix*normal);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1);}`,
+    fragmentShader:`varying vec3 vN;void main(){float i=pow(0.65-dot(vN,vec3(0,0,1)),2.5);gl_FragColor=vec4(0.31,0.55,1,1)*i;}`,
+    blending:THREE.AdditiveBlending,side:THREE.BackSide,transparent:true});
+  lpScene.add(new THREE.Mesh(new THREE.SphereGeometry(1.58,64,64),atmMat));
+  const cc=document.createElement('canvas');cc.width=1024;cc.height=512;const cx=cc.getContext('2d');
+  cx.fillStyle='rgba(0,0,0,0)';cx.fillRect(0,0,1024,512);cx.fillStyle='rgba(255,255,255,0.06)';
+  for(let i=0;i<200;i++){const x=Math.random()*1024,y=Math.random()*512,w=Math.random()*60+10,h=Math.random()*12+3;cx.beginPath();cx.ellipse(x,y,w,h,Math.random()*Math.PI,0,Math.PI*2);cx.fill();}
+  const cTex=new THREE.CanvasTexture(cc);cTex.wrapS=THREE.RepeatWrapping;
+  lpClouds=new THREE.Mesh(new THREE.SphereGeometry(1.52,64,64),new THREE.MeshPhongMaterial({map:cTex,transparent:true,opacity:0.3,depthWrite:false}));
+  lpScene.add(lpClouds);
+  lpGlobe.rotation.y=THREE.MathUtils.degToRad(80);lpClouds.rotation.y=THREE.MathUtils.degToRad(80);
+}
+function lpProceduralEarth(mesh){const c=document.createElement('canvas');c.width=2048;c.height=1024;const ctx=c.getContext('2d');const g=ctx.createLinearGradient(0,0,0,1024);g.addColorStop(0,'#061224');g.addColorStop(0.5,'#0d2540');g.addColorStop(1,'#061224');ctx.fillStyle=g;ctx.fillRect(0,0,2048,1024);const t=new THREE.CanvasTexture(c);t.wrapS=THREE.RepeatWrapping;mesh.material.map=t;mesh.material.color.set(0xffffff);mesh.material.needsUpdate=true;}
+function lpCreateStars(){const geo=new THREE.BufferGeometry(),n=3000,p=new Float32Array(n*3);for(let i=0;i<n;i++){const r=50+Math.random()*100,t=Math.random()*Math.PI*2,ph=Math.random()*Math.PI;p[i*3]=r*Math.sin(ph)*Math.cos(t);p[i*3+1]=r*Math.sin(ph)*Math.sin(t);p[i*3+2]=r*Math.cos(ph);}geo.setAttribute('position',new THREE.BufferAttribute(p,3));lpScene.add(new THREE.Points(geo,new THREE.PointsMaterial({color:0xffffff,size:0.15,transparent:true,opacity:0.8,sizeAttenuation:true})));}
+function lpOnResize(){if(!lpCamera||!lpRenderer)return;lpCamera.aspect=window.innerWidth/window.innerHeight;lpCamera.updateProjectionMatrix();lpRenderer.setSize(window.innerWidth,window.innerHeight);}
+function lpAnimate(){if(!lpRenderer)return;requestAnimationFrame(lpAnimate);if(lpGlobe&&lpScrollProgress<0.05){lpGlobe.rotation.y+=0.0008;if(lpClouds)lpClouds.rotation.y+=0.001;}lpRenderer.render(lpScene,lpCamera);}
+
+// ─── GSAP Scroll ─────────────────────────────────────────
+function lpInitScrollAnimation(){
+  if(typeof gsap==='undefined'||!lpGlobe)return;
+  gsap.registerPlugin(ScrollTrigger);
+  const tl=gsap.timeline({scrollTrigger:{trigger:'#lp-hero-section',start:'top top',end:'bottom bottom',scrub:1,onUpdate:(s)=>{lpScrollProgress=s.progress;}}});
+  tl.to('#lp-hero-content',{opacity:0,scale:0.95,duration:0.2},0);
+  tl.to('#lp-scroll-indicator',{opacity:0,duration:0.1},0);
+  tl.to(lpGlobe.rotation,{y:THREE.MathUtils.degToRad(-80),x:THREE.MathUtils.degToRad(6),duration:0.7,ease:'power2.inOut'},0.1);
+  if(lpClouds)tl.to(lpClouds.rotation,{y:THREE.MathUtils.degToRad(-75),x:THREE.MathUtils.degToRad(6),duration:0.7,ease:'power2.inOut'},0.1);
+  tl.to(lpCamera.position,{z:2.6,y:0.15,x:0,duration:0.7,ease:'power2.inOut',onUpdate:()=>lpCamera.updateProjectionMatrix()},0.15);
+  tl.fromTo('#lp-location-label',{opacity:0,y:20},{opacity:1,y:0,duration:0.15,onStart:()=>{const e=document.getElementById('lp-location-label');if(e)e.classList.add('visible');}},0.5);
+  tl.to('#lp-location-label',{opacity:0,duration:0.15},0.8);
+  tl.to(lpCamera.position,{z:1.5,duration:0.2,onUpdate:()=>lpCamera.updateProjectionMatrix()},0.8);
+  tl.to(lpGlobe.material,{opacity:0,duration:0.15},0.85);
+  ScrollTrigger.create({trigger:'#lp-stocks-section',start:'top 80%',onEnter:()=>{gsap.to('#lp-globe-container',{opacity:0,duration:0.5});gsap.to('#lp-particle-canvas',{opacity:0,duration:0.5});},onLeaveBack:()=>{gsap.to('#lp-globe-container',{opacity:1,duration:0.5});gsap.to('#lp-particle-canvas',{opacity:1,duration:0.5});}});
+  ScrollTrigger.create({trigger:'#lp-stocks-section',start:'top 60%',once:true,onEnter:()=>gsap.fromTo('.lp-stocks-header',{opacity:0,y:40},{opacity:1,y:0,duration:0.8,ease:'power3.out'})});
+}
+
+// ─── Particles ───────────────────────────────────────────
+function lpInitParticles(){
+  const canvas=document.getElementById('lp-particle-canvas');if(!canvas)return;
+  const ctx=canvas.getContext('2d');canvas.width=window.innerWidth;canvas.height=window.innerHeight;
+  const ps=[];for(let i=0;i<60;i++)ps.push({x:Math.random()*canvas.width,y:Math.random()*canvas.height,vx:(Math.random()-0.5)*0.3,vy:(Math.random()-0.5)*0.3,r:Math.random()*1.5+0.5,o:Math.random()*0.3+0.1});
+  function draw(){ctx.clearRect(0,0,canvas.width,canvas.height);ps.forEach((p,i)=>{p.x+=p.vx;p.y+=p.vy;if(p.x<0)p.x=canvas.width;if(p.x>canvas.width)p.x=0;if(p.y<0)p.y=canvas.height;if(p.y>canvas.height)p.y=0;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fillStyle=`rgba(96,158,69,${p.o})`;ctx.fill();for(let j=i+1;j<ps.length;j++){const dx=p.x-ps[j].x,dy=p.y-ps[j].y,d=Math.sqrt(dx*dx+dy*dy);if(d<150){ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(ps[j].x,ps[j].y);ctx.strokeStyle=`rgba(96,158,69,${0.05*(1-d/150)})`;ctx.lineWidth=0.5;ctx.stroke();}}});requestAnimationFrame(draw);}
+  draw();window.addEventListener('resize',()=>{canvas.width=window.innerWidth;canvas.height=window.innerHeight;},{passive:true});
+}
+
+// ─── Stock Cards ──────────────────────────────────────────
+function lpMiniChart(data,isPos){const W=240,H=48,P=4,mn=Math.min(...data),mx=Math.max(...data),rng=mx-mn||1;const pts=data.map((v,i)=>`${P+(i/(data.length-1))*(W-P*2)},${H-P-((v-mn)/rng)*(H-P*2)}`);const path=`M ${pts.join(' L ')}`,area=`${path} L ${W-P},${H} L ${P},${H} Z`,c=isPos?'#34d399':'#f87171',gid=`lpg${Math.random().toString(36).slice(2)}`;return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${c}" stop-opacity="0.2"/><stop offset="100%" stop-color="${c}" stop-opacity="0"/></linearGradient></defs><path d="${area}" fill="url(#${gid})"/><path d="${path}" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;}
+function lpRenderStockCards(){const grid=document.getElementById('lp-stocks-grid');if(!grid)return;grid.innerHTML=LP_STOCKS.map((s,i)=>{const pos=s.pct>=0;return `<div class="lp-stock-card" style="animation-delay:${0.1+i*0.05}s"><div class="lp-scard-header"><div class="lp-scard-info"><span class="lp-scard-symbol">${s.symbol}</span><span class="lp-scard-name">${s.name}</span></div><div class="lp-scard-logo">${s.logo}</div></div><div class="lp-scard-price-row"><span class="lp-scard-price">₹${s.price.toLocaleString('en-IN',{minimumFractionDigits:2})}</span><span class="lp-scard-change ${pos?'positive':'negative'}">${pos?'+':''}${s.pct.toFixed(2)}%</span></div><div class="lp-scard-chart">${lpMiniChart(s.chart,pos)}</div></div>`;}).join('');}
+function lpSimulatePrices(){setInterval(()=>{LP_STOCKS.forEach(s=>{const mv=(Math.random()-0.48)*s.price*0.001;s.price=Math.round((s.price+mv)*100)/100;s.pct=Math.round((mv/s.price)*10000)/100;s.chart.shift();s.chart.push(s.price);});lpRenderStockCards();},4000);}
+
+// ─── Navbar scroll ────────────────────────────────────────
+function lpNavbarScroll(){
+  const nav=document.getElementById('lp-main-nav');if(!nav)return;
+  const lp=document.getElementById('landing-page');if(!lp)return;
+  lp.addEventListener('scroll',()=>{if(lp.scrollTop>100){nav.style.background='rgba(255,255,255,0.92)';nav.style.borderBottomColor='rgba(0,0,0,0.06)';nav.querySelectorAll('.lp-nav-link').forEach(l=>l.style.color='#555');const lt=nav.querySelector('.lp-logo-text');if(lt)lt.style.color='#1a1a2a';}else{nav.style.background='rgba(0,0,0,0.4)';nav.style.borderBottomColor='rgba(255,255,255,0.06)';nav.querySelectorAll('.lp-nav-link').forEach(l=>l.style.color='');const lt=nav.querySelector('.lp-logo-text');if(lt)lt.style.color='';}},{passive:true});
+}
+
+// ─── Analyzer ─────────────────────────────────────────────
+function lpOpenAnalyzer(e){if(e)e.preventDefault();const ov=document.getElementById('lp-analyzer-overlay');if(!ov)return;ov.classList.add('visible');ov.classList.remove('results-mode');document.body.style.overflow='hidden';lpResetAnalyzer();const vid=document.getElementById('lp-az-promo-video');if(vid){vid.currentTime=0;vid.play().catch(()=>{});}}
+function lpCloseAnalyzer(){const ov=document.getElementById('lp-analyzer-overlay');if(ov){ov.classList.remove('visible','results-mode');}document.body.style.overflow='';}
+function lpShowStep(n){lpCurrentStep=n;[1,2,3].forEach(i=>{const s=document.getElementById('lp-az-step'+i),seg=document.getElementById('lp-seg'+i);if(s)s.classList.toggle('visible',i===n);if(seg)seg.classList.toggle('active',i<=n);});const lbl=document.getElementById('lp-az-step-label');if(lbl)lbl.textContent=`Step ${n} of 3`;}
+function lpAzNext(from){if(from===1){const v=document.getElementById('lp-income')?.value;if(!v||isNaN(v)||parseFloat(v)<=0){lpShowErr('Please enter a valid monthly income.');return;}}lpHideErr();lpShowStep(from+1);}
+function lpAzBack(from){lpHideErr();lpShowStep(from-1);}
+function lpSelectLit(val){lpLiteracyScore=val;document.querySelectorAll('.lp-lit-card').forEach(c=>c.classList.toggle('selected',parseInt(c.dataset.val)===val));}
+function lpShowErr(msg){const b=document.getElementById('lp-err-box');if(b){b.textContent=msg;b.style.display='block';}}
+function lpHideErr(){const b=document.getElementById('lp-err-box');if(b)b.style.display='none';}
+async function lpSubmitForm(){
+  lpHideErr();
+  const g=id=>document.getElementById(id)?.value;
+  const profile={income:parseFloat(g('lp-income')),city_tier:g('lp-city_tier'),income_type:g('lp-income_type'),dependents:g('lp-dependents'),pf_status:g('lp-pf_status'),emergency_fund:g('lp-emergency_fund'),literacy_score:lpLiteracyScore,bank_distance:g('lp-bank_distance'),first_gen:g('lp-first_gen'),monthly_emi:parseFloat(g('lp-monthly_emi'))||0,loan_type:g('lp-loan_type')};
+  const ob=document.getElementById('lp-az-onboarding'),ld=document.getElementById('lp-az-loading'),res=document.getElementById('lp-az-results');
+  if(ob)ob.style.display='none';if(ld)ld.style.display='block';if(res)res.style.display='none';
+  try{const r=await fetch(LP_API_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(profile)});if(!r.ok)throw new Error('Server '+r.status);const data=await r.json();if(ld)ld.style.display='none';lpRenderResults(data);document.getElementById('lp-analyzer-overlay')?.classList.add('results-mode');}
+  catch(err){if(ld)ld.style.display='none';if(ob)ob.style.display='block';lpShowErr('Could not connect to AI backend. Make sure it is running on port 8000.');}
+}
+function lpResetAnalyzer(){lpLiteracyScore=1;const ob=document.getElementById('lp-az-onboarding'),ld=document.getElementById('lp-az-loading'),res=document.getElementById('lp-az-results');if(ob)ob.style.display='block';if(ld)ld.style.display='none';if(res)res.style.display='none';lpHideErr();lpShowStep(1);document.querySelectorAll('.lp-lit-card').forEach(c=>c.classList.toggle('selected',parseInt(c.dataset.val)===1));document.getElementById('lp-analyzer-overlay')?.classList.remove('results-mode');const vid=document.getElementById('lp-az-promo-video');if(vid)vid.play().catch(()=>{});}
+function lpInr(n){return '₹'+Number(n).toLocaleString('en-IN');}
+function lpRenderResults(data){
+  const ps=data.profile_summary,sb=data.surplus_breakdown,plan=data.investment_plan,deds=data.equity_deductions;
+  const set=(id,html)=>{const e=document.getElementById(id);if(e)e.innerHTML=html;};const setTxt=(id,t)=>{const e=document.getElementById(id);if(e)e.textContent=t;};
+  setTxt('lp-r-headline',ps.headline);set('lp-r-submeta',`Primary Strategy: <strong>${ps.primary_strategy}</strong> &nbsp;·&nbsp; Literacy: <strong>${ps.literacy_level}</strong>`);
+  set('lp-r-strengths',ps.strengths.length?`<div class="lp-slabel g">✅ STRENGTHS</div>`+ps.strengths.map(s=>`<div class="lp-bitem">· ${s}</div>`).join(''):'');
+  set('lp-r-risks',ps.risks.length?`<div class="lp-slabel a">⚠️ RISK AREAS</div>`+ps.risks.map(r=>`<div class="lp-bitem">· ${r}</div>`).join(''):'');
+  set('lp-r-actions',ps.actions.length?`<div class="lp-slabel p">🚀 ACTION ITEMS</div>`+ps.actions.map(a=>`<div class="lp-aitem">${a}</div>`).join(''):'');
+  setTxt('lp-r-score',data.equity_score);
+  set('lp-r-deductions',deds.length?deds.map(d=>`<div class="lp-ded-item"><span>${d.points} pts</span> — ${d.reason}</div>`).join(''):`<div class="lp-ded-item" style="color:#4ecca3">No penalties — strong financial profile</div>`);
+  const wRows=[{l:'Raw Monthly Income',v:sb.raw_income,c:'inc'},{l:'Cost of Living Adjustment',v:sb.col_deduction,c:'ded'}];
+  if(sb.emi_deduction>0)wRows.push({l:'Loan / EMI Payment',v:sb.emi_deduction,c:'ded'});
+  wRows.push({l:'Dependency Load',v:sb.dep_deduction,c:'ded'},{l:'Volatility Buffer',v:sb.vol_deduction,c:'ded'},{l:'Emergency Fund Gap',v:sb.emergency_deduction,c:'ded'});
+  if(sb.debt_acceleration_amount)wRows.push({l:'Debt Acceleration',v:sb.debt_acceleration_amount,c:'ded'});
+  wRows.push({l:'True Investable Surplus',v:sb.true_surplus,c:'sur'});
+  set('lp-r-waterfall',wRows.map(r=>`<div class="lp-wrow"><span class="lp-wlbl">${r.l}</span><span class="lp-wval ${r.c}">${r.c==='inc'?'+':r.c==='ded'?'−':''} ${lpInr(r.v)}</span></div>`).join(''));
+  set('lp-r-allocbar',plan.map(i=>`<div style="width:${i.percentage}%;background:${LP_TYPE_COLORS[i.type]||'#7c6fff'}" title="${i.label}: ${i.percentage}%"></div>`).join(''));
+  set('lp-r-plan',plan.map(i=>`<div class="lp-pcard" style="border-left-color:${LP_TYPE_COLORS[i.type]||'#7c6fff'}"><div class="lp-ptop"><div><div class="lp-plabel">${i.label}</div><div class="lp-pmeta">${i.horizon} · ${i.instrument}</div></div><div><div class="lp-pamount" style="color:${LP_TYPE_COLORS[i.type]||'#7c6fff'}">${lpInr(i.monthly_amount)}</div><div class="lp-ppct">${i.percentage}% of surplus</div></div></div><div class="lp-pwhy">${i.why}</div></div>`).join(''));
+  const resEl=document.getElementById('lp-az-results');if(resEl)resEl.style.display='block';
+  const right=document.querySelector('.lp-az-right');if(right)right.scrollTop=0;
+}
+
+// ─── Landing Bootstrap ────────────────────────────────────
+document.addEventListener('DOMContentLoaded', ()=>{
+  lpInitGlobe();
+  lpInitParticles();
+  lpRenderStockCards();
+  lpNavbarScroll();
+  requestAnimationFrame(()=>requestAnimationFrame(()=>lpInitScrollAnimation()));
+  lpSimulatePrices();
+});
+
+/* ══════════════════════════════════════════════════════════
+   END LANDING PAGE — TRADING TERMINAL BELOW
+══════════════════════════════════════════════════════════ */
+
 // ============================================================================
 // SPA NAVIGATION
 // ============================================================================
 
-const API = "http://127.0.0.1:8000";
+const API = "http://127.0.0.1:8001";
 
 const VIEWS = ["markets", "funds", "sip", "company", "orders"];
 
@@ -500,14 +685,24 @@ function renderCompanyFromSummary(d, ticker) {
     </div>
   `).join("");
 
-  // Analyst card
+  // Analyst card — use real data if available, otherwise estimate from 52W High
+  const hasRealAnalyst = d.analyst_target && d.analyst_target > 0 && d.analyst_count > 0;
+  const targetDisplay  = hasRealAnalyst
+    ? "₹" + Math.round(d.analyst_target).toLocaleString("en-IN")
+    : (d.week_52_high ? "₹" + Math.round(d.week_52_high * 1.12).toLocaleString("en-IN") : "—");
+  const upsideDisplay  = hasRealAnalyst
+    ? (d.analyst_upside >= 0 ? "+" : "") + d.analyst_upside.toFixed(1) + "% " + (d.analyst_upside >= 0 ? "Upside" : "Downside")
+    : "Target Estimate";
+  const recDisplay     = hasRealAnalyst ? d.analyst_rec : "Based on 52W High + 12%";
+  const countDisplay   = hasRealAnalyst ? `${d.analyst_count} Analyst Opinions` : "Use long-term analysis for precise targets";
+  const barWidth       = hasRealAnalyst ? Math.min(100, Math.max(0, 50 + (d.analyst_upside || 0))) : 65;
   document.getElementById("coAnalystCard").innerHTML = `
     <h3><span class="material-symbols-outlined" style="font-size:16px">track_changes</span> ANALYST CONSENSUS</h3>
-    <div class="analyst-target" style="color:var(--primary)">₹${d.week_52_high ? Math.round(d.week_52_high * 1.12).toLocaleString("en-IN") : "—"}</div>
-    <div class="analyst-upside">Target Estimate</div>
-    <div class="analyst-rec">Based on 52W High + 12%</div>
-    <div class="analyst-count">Use long-term analysis for precise targets</div>
-    <div class="rec-bar"><div class="rec-bar-fill" style="width:65%"></div></div>
+    <div class="analyst-target" style="color:var(--primary)">${targetDisplay}</div>
+    <div class="analyst-upside">${upsideDisplay}</div>
+    <div class="analyst-rec">${recDisplay}</div>
+    <div class="analyst-count">${countDisplay}</div>
+    <div class="rec-bar"><div class="rec-bar-fill" style="width:${barWidth}%"></div></div>
   `;
 
   // Vitals
@@ -545,8 +740,41 @@ function renderCompanyFromSummary(d, ticker) {
 }
 
 function renderCompany(d) {
-  // Full company API response
-  renderCompanyFromSummary(d, d.ticker || "");
+  // Flatten the nested /api/company/ response into what renderCompanyFromSummary expects
+  const r = d.ratios || {};
+  const a = d.analyst || {};
+  const mcap = d.market_cap || 0;
+  const mcapFmt = mcap >= 1e12 ? "₹" + (mcap/1e12).toFixed(2) + "T"
+                : mcap >= 1e9  ? "₹" + (mcap/1e9).toFixed(2) + "B"
+                : mcap >= 1e7  ? "₹" + (mcap/1e7).toFixed(0) + "Cr"
+                : mcap > 0     ? "₹" + Math.round(mcap).toLocaleString("en-IN") : "—";
+
+  const flat = {
+    ticker:          d.ticker || "",
+    company_name:    d.name || d.ticker || "",
+    exchange:        d.exchange || "NSE",
+    sector:          d.sector || "Equity",
+    industry:        d.industry || "",
+    price:           d.price || 0,
+    change_pct:      d.change_pct || 0,
+    market_cap_fmt:  mcapFmt,
+    pe_ratio:        r.pe_ratio || 0,
+    eps:             r.eps || 0,
+    week_52_high:    d.high_52w || 0,
+    week_52_low:     d.low_52w || 0,
+    dividend_yield:  r.dividend_yield || 0,
+    volume:          0,               // not in /api/company/ response
+    beta:            r.beta || 0,
+    roe:             r.roe || 0,
+    debt_to_equity:  r.debt_to_equity || 0,
+    profit_margin:   r.profit_margin ? r.profit_margin / 100 : 0,
+    // pass analyst data through for Analyst Consensus card
+    analyst_target:  a.target_price || 0,
+    analyst_rec:     a.recommendation || "Hold",
+    analyst_count:   a.analyst_count || 0,
+    analyst_upside:  a.upside_pct || 0,
+  };
+  renderCompanyFromSummary(flat, flat.ticker);
 }
 
 async function buildCoBarChart(name, price, high, low, ticker) {
@@ -1590,6 +1818,15 @@ async function loadTicker(ticker) {
 }
 
 
+function flashElement(el, direction) {
+  if (!el) return;
+  const flashClass = direction === "up" ? "flash-up" : "flash-down";
+  el.classList.remove("flash-up", "flash-down");
+  void el.offsetWidth; // trigger reflow
+  el.classList.add(flashClass);
+  setTimeout(() => el.classList.remove(flashClass), 1000);
+}
+
 async function loadLivePrice(ticker, version) {
   try {
     const res = await fetch(`${API}/api/live/${ticker}`);
@@ -1598,7 +1835,12 @@ async function loadLivePrice(ticker, version) {
 
     document.getElementById("priceBanner").classList.remove("hidden");
     document.getElementById("bannerName").textContent = ticker;
-    document.getElementById("bannerPrice").textContent = formatPrice(data.price);
+    
+    const bannerPriceEl = document.getElementById("bannerPrice");
+    if (bannerPriceEl.textContent !== formatPrice(data.price)) {
+      bannerPriceEl.textContent = formatPrice(data.price);
+      flashElement(bannerPriceEl, data.direction);
+    }
 
     const changeEl = document.getElementById("bannerChange");
     const sign = data.change >= 0 ? "+" : "";
@@ -1674,9 +1916,10 @@ function drawMainChart(data) {
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      animation: { duration: 700, easing: 'easeOutQuart' },
       interaction: { mode: "index", intersect: false },
       plugins: {
-        legend: { labels: { color: "#6b7280", font: { size: 11 } } },
+        legend: { labels: { color: "#5A6A8A", font: { size: 11 } } },
         tooltip: { backgroundColor: "#0D1526", borderColor: "#1C2841", borderWidth: 1, titleColor: "#E8ECF4", bodyColor: "#A8B3CC" },
       },
       scales: {
