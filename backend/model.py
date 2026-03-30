@@ -267,10 +267,10 @@ def detect_crisis_mode(sentiment_score: float, atr_pct: float, vix_level: float)
 
 def train_and_predict(
     df: pd.DataFrame,
-    epochs: int = 100,
+    epochs: int = 35,
     lr: float = 0.001,
     batch_size: int = 32,
-    patience: int = 10,
+    patience: int = 7,
     sentiment_score: float = 0.0,
     technical_score: float = 0.0,
     llm_score: float = 0.0,

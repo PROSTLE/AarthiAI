@@ -369,7 +369,7 @@
     <!-- Insights Section -->
     <section class="insights-section">
       <h2 class="section-title">🌐 AI × Finance — Did You Know?</h2>
-      <div class="insights-grid">
+<div class="insights-grid">
         <div class="insight-card"><div class="insight-icon">🤖</div><h4>AI Handles 60-70% of Trades</h4><p>Algorithmic and AI-driven systems now execute the majority of trades on major stock exchanges worldwide.</p></div>
         <div class="insight-card"><div class="insight-icon">🧠</div><h4>LSTM Remembers Patterns</h4><p>Long Short-Term Memory networks can learn patterns across 60+ trading days, capturing trends humans easily miss.</p></div>
         <div class="insight-card"><div class="insight-icon">📰</div><h4>News Moves Markets</h4><p>News sentiment can predict short-term stock movements with up to 70% accuracy when combined with technical analysis.</p></div>
@@ -396,64 +396,90 @@
       <button class="cat-btn" data-cat="Debt" onclick="filterFunds('Debt', this)">Debt</button>
       <button class="cat-btn" data-cat="Hybrid" onclick="filterFunds('Hybrid', this)">Hybrid</button>
       <button class="cat-btn" data-cat="Index" onclick="filterFunds('Index', this)">Index Funds</button>
+      <button class="cat-btn brief-tab-btn" onclick="switchMfTab('brief', this)" style="margin-left:auto;background:linear-gradient(135deg,rgba(168,232,255,0.08),rgba(0,212,255,0.04));border-color:rgba(168,232,255,0.2);color:var(--primary)">📋 Monthly Brief</button>
     </div>
 
-    <div class="mf-grid">
-      <!-- Left: Fund List -->
-      <div>
-        <div class="scatter-card">
-          <h3>Risk–Reward Analysis</h3>
-          <p>3-Year Annualized Return vs. Expense Ratio (bubble size = AUM)</p>
-          <div class="scatter-chart-wrap"><canvas id="scatterChart"></canvas></div>
+    <!-- Fund Explorer Tab -->
+    <div id="mfExplorerTab">
+      <div class="mf-grid">
+        <!-- Left: Fund List -->
+        <div>
+          <div class="scatter-card">
+            <h3>Risk–Reward Analysis</h3>
+            <p>3-Year Annualized Return vs. Expense Ratio (bubble size = AUM)</p>
+            <div class="scatter-chart-wrap"><canvas id="scatterChart"></canvas></div>
+          </div>
+
+          <div class="fund-list" id="fundList">
+            <div class="mf-loading">Loading funds...</div>
+          </div>
+
+          <div class="amc-table-section">
+            <h2>🏛️ Fund House Comparison</h2>
+            <div class="amc-table-wrap">
+              <table class="amc-table">
+                <thead>
+                  <tr>
+                    <th>AMC Name</th><th>Avg 3Y Return</th><th>Avg Expense Ratio</th>
+                    <th>Risk Profile</th><th>Predictive Confidence</th>
+                  </tr>
+                </thead>
+                <tbody id="amcTableBody"></tbody>
+              </table>
+            </div>
+          </div>
         </div>
 
-        <div class="fund-list" id="fundList">
-          <div class="mf-loading">Loading funds...</div>
-        </div>
+        <!-- Right Sidebar -->
+        <div class="mf-sidebar">
+          <div class="ai-signal-card">
+            <div class="ai-signal-bg">🧠</div>
+            <div class="ai-signal-title">🤖 AI Predictive Signal</div>
+            <div class="ai-signal-text" id="aiSignalText">Loading AI signal...</div>
+            <div class="ai-signal-link" onclick="navigateTo('company')">View Company Analysis <span class="material-symbols-outlined" style="font-size:12px">arrow_forward</span></div>
+          </div>
 
-        <div class="amc-table-section">
-          <h2>🏛️ Fund House Comparison</h2>
-          <div class="amc-table-wrap">
-            <table class="amc-table">
-              <thead>
-                <tr>
-                  <th>AMC Name</th><th>Avg 3Y Return</th><th>Avg Expense Ratio</th>
-                  <th>Risk Profile</th><th>Predictive Confidence</th>
-                </tr>
-              </thead>
-              <tbody id="amcTableBody"></tbody>
-            </table>
+          <div class="mfsb-card">
+            <div class="mfsb-title">🔥 Top Alpha Generators</div>
+            <div id="topAlphaList"><div class="mf-loading">Loading...</div></div>
+          </div>
+
+          <div class="mfsb-card">
+            <div class="mfsb-title">🛡️ Best Stability Score</div>
+            <div id="topStableList"><div class="mf-loading">Loading...</div></div>
+          </div>
+
+          <div class="kinetic-card" style="padding:18px; text-align:center;">
+            <div style="font-size:28px; margin-bottom:10px;">💰</div>
+            <h4 style="font-family:var(--font-headline); font-size:15px; font-weight:700; margin-bottom:8px;">Plan a SIP</h4>
+            <p style="font-size:12px; color:var(--on-surf-var); margin-bottom:14px;">Use our AI-powered SIP calculator to grow your wealth systematically.</p>
+            <button onclick="navigateTo('sip')" style="display:block;width:100%;padding:10px;background:linear-gradient(135deg,var(--secondary),var(--sec-cont));color:var(--on-secondary);font-family:var(--font-headline);font-size:13px;font-weight:700;border-radius:var(--radius);border:none;cursor:pointer;">Start SIP Calculator →</button>
+          </div>
+
+          <!-- Brief CTA card -->
+          <div class="kinetic-card" style="padding:18px;background:linear-gradient(135deg,rgba(168,232,255,0.05),rgba(0,212,255,0.03));border:1px solid rgba(168,232,255,0.15);">
+            <div style="font-size:24px;margin-bottom:8px;">📋</div>
+            <h4 style="font-family:var(--font-headline);font-size:14px;font-weight:700;color:var(--primary);margin-bottom:6px;">Monthly Investment Brief</h4>
+            <p style="font-size:12px;color:var(--on-surf-var);margin-bottom:12px;">Piotroski + Altman + ML 3-layer signal fusion for all funds.</p>
+            <button onclick="switchMfTab('brief', document.querySelector('.brief-tab-btn'))" style="display:block;width:100%;padding:9px;background:rgba(168,232,255,0.1);color:var(--primary);font-family:var(--font-headline);font-size:12px;font-weight:700;border-radius:var(--radius);border:1px solid rgba(168,232,255,0.2);cursor:pointer;">View Brief →</button>
           </div>
         </div>
       </div>
+    </div><!-- /mfExplorerTab -->
 
-      <!-- Right Sidebar -->
-      <div class="mf-sidebar">
-        <div class="ai-signal-card">
-          <div class="ai-signal-bg">🧠</div>
-          <div class="ai-signal-title">🤖 AI Predictive Signal</div>
-          <div class="ai-signal-text" id="aiSignalText">Loading AI signal...</div>
-          <div class="ai-signal-link" onclick="navigateTo('company')">View Company Analysis <span class="material-symbols-outlined" style="font-size:12px">arrow_forward</span></div>
-        </div>
-
-        <div class="mfsb-card">
-          <div class="mfsb-title">🔥 Top Alpha Generators</div>
-          <div id="topAlphaList"><div class="mf-loading">Loading...</div></div>
-        </div>
-
-        <div class="mfsb-card">
-          <div class="mfsb-title">🛡️ Best Stability Score</div>
-          <div id="topStableList"><div class="mf-loading">Loading...</div></div>
-        </div>
-
-        <div class="kinetic-card" style="padding:18px; text-align:center;">
-          <div style="font-size:28px; margin-bottom:10px;">💰</div>
-          <h4 style="font-family:var(--font-headline); font-size:15px; font-weight:700; margin-bottom:8px;">Plan a SIP</h4>
-          <p style="font-size:12px; color:var(--on-surf-var); margin-bottom:14px;">Use our AI-powered SIP calculator to grow your wealth systematically.</p>
-          <button onclick="navigateTo('sip')" style="display:block;width:100%;padding:10px;background:linear-gradient(135deg,var(--secondary),var(--sec-cont));color:var(--on-secondary);font-family:var(--font-headline);font-size:13px;font-weight:700;border-radius:var(--radius);border:none;cursor:pointer;">Start SIP Calculator →</button>
+    <!-- Monthly Brief Tab -->
+    <div id="mfBriefTab" class="hidden">
+      <div id="mfBriefPanel">
+        <div style="text-align:center;padding:60px 20px;color:var(--outline)">
+          <div style="font-size:48px;margin-bottom:16px">📋</div>
+          <h3 style="font-family:var(--font-headline);font-size:20px;color:var(--on-surface);margin-bottom:8px">Monthly Investment Brief</h3>
+          <p style="font-size:13px;color:var(--on-surf-var);margin-bottom:20px">3-layer hybrid analysis: ML forecast + Piotroski F-Score + Altman Z-Score → Signal fusion</p>
+          <button onclick="loadFundBrief()" style="padding:12px 28px;background:linear-gradient(135deg,var(--primary),var(--primary-cont));color:var(--on-primary);font-family:var(--font-headline);font-size:14px;font-weight:700;border:none;border-radius:var(--radius-lg);cursor:pointer;">⚡ Run Analysis</button>
+          <p style="font-size:11px;color:var(--outline);margin-top:12px">Analysis takes 30–60s · Requires backend server</p>
         </div>
       </div>
-    </div>
+    </div><!-- /mfBriefTab -->
+
   </div><!-- /view-funds -->
 
   <!-- ════════════════════════════════
@@ -800,6 +826,6 @@
   </div>
 </footer>
 
-<script src="app.js?v=8"></script>
+<script src="app.js?v=9"></script>
 </body>
 </html>

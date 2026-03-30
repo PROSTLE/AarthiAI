@@ -223,6 +223,27 @@ function openSipForFund(name) {
   applySipPreset("12");
 }
 
+function switchMfTab(tab, btn) {
+  const explorer = document.getElementById("mfExplorerTab");
+  const brief    = document.getElementById("mfBriefTab");
+  // Deactivate all cat-btn active states
+  document.querySelectorAll(".cat-filters .cat-btn").forEach(b => b.classList.remove("active"));
+  if (btn) btn.classList.add("active");
+
+  if (tab === "brief") {
+    if (explorer) explorer.classList.add("hidden");
+    if (brief)    brief.classList.remove("hidden");
+    // Auto-load if not yet loaded
+    if (!_briefLoaded) loadFundBrief();
+  } else {
+    if (brief)    brief.classList.add("hidden");
+    if (explorer) explorer.classList.remove("hidden");
+    // Re-activate "All Funds" button
+    const allBtn = document.querySelector('.cat-btn[data-cat="all"]');
+    if (allBtn) allBtn.classList.add("active");
+  }
+}
+
 // MF search filter (wired to mfSearch in topnav)
 document.addEventListener("DOMContentLoaded", () => {
   const mfSearchEl = document.getElementById("mfSearch");
@@ -519,8 +540,8 @@ function renderCompanyFromSummary(d, ticker) {
     <button onclick="navigateTo('markets');document.getElementById('tickerInput').value='${ticker}';loadTicker()" style="width:100%;margin-top:14px;padding:10px;background:linear-gradient(135deg,var(--primary),var(--primary-cont));color:var(--on-primary);font-family:var(--font-headline);font-size:12px;font-weight:700;border:none;border-radius:var(--radius);cursor:pointer;">📈 View Chart & Full Analysis →</button>
   `;
 
-  // Simple bar chart for the company
-  buildCoBarChart(name, price, d.week_52_high, d.week_52_low);
+  // Real historical chart for the company
+  buildCoBarChart(name, price, d.week_52_high, d.week_52_low, ticker);
 }
 
 function renderCompany(d) {
@@ -528,31 +549,69 @@ function renderCompany(d) {
   renderCompanyFromSummary(d, d.ticker || "");
 }
 
-function buildCoBarChart(name, price, high, low) {
+async function buildCoBarChart(name, price, high, low, ticker) {
   const canvas = document.getElementById("coChart");
   if (!canvas) return;
   if (coChart) coChart.destroy();
-  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-  const nowMonth = new Date().getMonth();
-  const labels = Array.from({length: 12}, (_, i) => months[(nowMonth - 11 + i + 12) % 12]);
-  const range = high - low;
-  const prices = labels.map((_, i) => {
-    const t = i / 11;
-    return Math.round(low + range * (0.3 + 0.4 * Math.sin(t * Math.PI) + 0.3 * t + (Math.random() - 0.5) * 0.08));
-  });
-  prices[11] = Math.round(price);
+
+  // Try to fetch real historical data from backend
+  let labels = [];
+  let prices = [];
+  let volumes = [];
+  let usedReal = false;
+
+  if (ticker) {
+    try {
+      const res = await fetch(`${API}/api/chart/${encodeURIComponent(ticker)}?timeframe=1y`);
+      const data = await res.json();
+      if (data.data && data.data.length > 0) {
+        labels  = data.data.map(p => p.time);
+        prices  = data.data.map(p => p.close);
+        volumes = data.data.map(p => p.volume);
+        usedReal = true;
+      }
+    } catch(e) { console.warn("Co chart fetch failed, no fallback generated", e); }
+  }
+
+  if (!usedReal || prices.length === 0) return; // Skip if no real data
+
+  const isUp = prices[prices.length - 1] >= prices[0];
+  const lineColor = isUp ? "#a8e8ff" : "#ef4444";
+  const fillColor = isUp ? "rgba(168,232,255,0.07)" : "rgba(239,68,68,0.07)";
+
   coChart = new Chart(canvas.getContext("2d"), {
     type: "line",
     data: {
       labels,
-      datasets: [{ label: name, data: prices, borderColor: "#a8e8ff", backgroundColor: "rgba(168,232,255,0.06)", fill: true, tension: 0.4, pointRadius: 0, borderWidth: 2 }]
+      datasets: [{
+        label: name,
+        data: prices,
+        borderColor: lineColor,
+        backgroundColor: fillColor,
+        fill: true,
+        tension: 0.3,
+        pointRadius: 0,
+        borderWidth: 2,
+      }]
     },
     options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: { backgroundColor: "#1a1c20", borderColor: "rgba(60,73,78,0.3)", borderWidth: 1 } },
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: "index", intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: "#0f1117",
+          borderColor: "rgba(168,232,255,0.2)",
+          borderWidth: 1,
+          callbacks: {
+            label: (ctx) => `₹${Number(ctx.raw).toLocaleString("en-IN")}`,
+          },
+        },
+      },
       scales: {
-        x: { grid: { color: "rgba(60,73,78,0.1)" }, ticks: { color: "#859398" } },
-        y: { grid: { color: "rgba(60,73,78,0.1)" }, ticks: { color: "#859398", callback: v => "₹" + v.toLocaleString("en-IN") } }
+        x: { grid: { color: "rgba(60,73,78,0.1)" }, ticks: { color: "#859398", maxTicksLimit: 8, maxRotation: 0, font: { size: 9 } } },
+        y: { grid: { color: "rgba(60,73,78,0.1)" }, ticks: { color: "#859398", font: { size: 9 }, callback: v => "₹" + (v >= 1e5 ? (v/1e5).toFixed(1)+"L" : Number(v).toLocaleString("en-IN")) } }
       }
     }
   });
@@ -561,8 +620,213 @@ function buildCoBarChart(name, price, high, low) {
 function switchCoChart(type, btn) {
   document.querySelectorAll(".chart-tab-btn").forEach(b => b.classList.remove("active"));
   btn.classList.add("active");
-  // Re-render chart with different dataset if available — basic stub for now
-  if (_coData) buildCoBarChart(_coData.company_name || "Stock", _coData.price, _coData.week_52_high, _coData.week_52_low);
+  if (_coData) {
+    const ticker = _coData.ticker || document.getElementById("companySearchInput")?.value?.trim()?.toUpperCase() || "";
+    buildCoBarChart(_coData.company_name || "Stock", _coData.price, _coData.week_52_high, _coData.week_52_low, ticker);
+  }
+}
+
+// ============================================================================
+// MONTHLY INVESTMENT BRIEF MODULE
+// ============================================================================
+
+let _briefLoaded = false;
+let _briefData   = null;
+
+// Signal → color + emoji mapping
+const SIGNAL_META = {
+  "SIP CONTINUE":  { color: "var(--secondary)",          bg: "rgba(64,229,108,0.12)",   emoji: "✅" },
+  "LUMP SUM BUY":  { color: "#a855f7",                   bg: "rgba(168,85,247,0.12)",   emoji: "💰" },
+  "SIP PAUSE":     { color: "#eab308",                   bg: "rgba(234,179,8,0.12)",    emoji: "⏸" },
+  "SIP REDUCE":    { color: "#f97316",                   bg: "rgba(249,115,22,0.12)",   emoji: "⬇" },
+  "EXIT":          { color: "var(--on-tertiary-cont)",   bg: "rgba(163,0,38,0.12)",     emoji: "🚨" },
+  "HOLD (Lock-in)":{ color: "#64748b",                   bg: "rgba(100,116,139,0.12)",  emoji: "🔒" },
+};
+
+const DIR_META = {
+  "BULLISH": { color: "var(--secondary)", label: "📈 Bullish" },
+  "NEUTRAL": { color: "#eab308",          label: "➡ Neutral"  },
+  "BEARISH": { color: "var(--on-tertiary-cont)", label: "📉 Bearish" },
+};
+
+function signalBadge(signal) {
+  const m = SIGNAL_META[signal] || { color: "var(--outline)", bg: "rgba(133,147,152,0.1)", emoji: "•" };
+  return `<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:4px;font-size:11px;font-weight:700;background:${m.bg};color:${m.color}">${m.emoji} ${signal}</span>`;
+}
+
+function dirBadge(dir) {
+  const m = DIR_META[dir] || { color: "var(--outline)", label: dir };
+  return `<span style="font-size:11px;font-weight:700;color:${m.color}">${m.label}</span>`;
+}
+
+function gateBadge(gate) {
+  return gate === "PASS"
+    ? `<span style="padding:2px 8px;border-radius:3px;background:rgba(64,229,108,0.1);color:var(--secondary);font-size:10px;font-weight:700">✓ PASS</span>`
+    : `<span style="padding:2px 8px;border-radius:3px;background:rgba(163,0,38,0.1);color:var(--on-tertiary-cont);font-size:10px;font-weight:700">✗ FAIL</span>`;
+}
+
+// ── Render the full monthly brief ─────────────────────────────────────────
+function renderMonthlyBrief(brief) {
+  _briefData   = brief;
+  const el     = document.getElementById("mfBriefPanel");
+  if (!el) return;
+
+  const systemic = brief.guardrails?.systemic_risk_flag;
+
+  el.innerHTML = `
+    <!-- Header -->
+    <div class="brief-header">
+      <div>
+        <div class="brief-title">📋 Monthly Investment Brief</div>
+        <div class="brief-subtitle">${brief.report_month} · Model Confidence: <strong style="color:var(--primary)">${brief.model_confidence_avg}%</strong></div>
+      </div>
+      <button class="brief-refresh-btn" onclick="loadFundBrief(true)">⟳ Refresh</button>
+    </div>
+
+    ${systemic ? `
+    <div class="brief-alert-banner">
+      ⚠ SYSTEMIC RISK ALERT — ${brief.guardrails.exit_signal_count} funds triggered EXIT signals simultaneously.
+      Consider moving 50% of portfolio to liquid funds pending review.
+    </div>` : ""}
+
+    <!-- Executive Summary -->
+    <div class="brief-section">
+      <div class="brief-section-title">Executive Summary</div>
+      <p class="brief-exec">${brief.executive_summary}</p>
+    </div>
+
+    <!-- Macro Commentary -->
+    <div class="brief-macro">
+      <div class="brief-section-title">🌍 Macro Commentary</div>
+      <div class="macro-chips">
+        <div class="macro-chip"><span class="mc-label">RBI Repo</span><span class="mc-val">${brief.macro_inputs.repo_rate}%</span></div>
+        <div class="macro-chip"><span class="mc-label">CPI Inflation</span><span class="mc-val">${brief.macro_inputs.cpi}%</span></div>
+        <div class="macro-chip"><span class="mc-label">Nifty P/E</span><span class="mc-val">${brief.macro_inputs.nifty_pe}x</span></div>
+        <div class="macro-chip"><span class="mc-label">Confidence</span><span class="mc-val" style="color:var(--primary)">${brief.model_confidence_avg}%</span></div>
+      </div>
+      <p class="brief-macro-text">${brief.macro_commentary}</p>
+    </div>
+
+    <!-- Top SIP Opportunities -->
+    ${brief.top_sip_opportunities?.length ? `
+    <div class="brief-section">
+      <div class="brief-section-title">🏆 Top 3 SIP Opportunities</div>
+      <div class="brief-opportunities">
+        ${brief.top_sip_opportunities.map((f, i) => `
+          <div class="opp-card" style="border-left:3px solid ${["var(--primary)","var(--secondary)","#a855f7"][i]||"var(--outline)"}">
+            <div class="opp-rank">#${i+1}</div>
+            <div class="opp-main">
+              <div class="opp-name">${f.fund}</div>
+              <div class="opp-meta">${f.category} · Min SIP ₹${f.min_sip} · ${f.risk_rating}</div>
+              <div class="opp-rationale">${f.rationale}</div>
+            </div>
+            <div class="opp-right">
+              <div class="opp-forecast">+${f.forecast_12m}%</div>
+              <div class="opp-forecast-label">12M forecast</div>
+              <div style="margin-top:6px">${signalBadge(f.signal)}</div>
+              <div style="margin-top:6px;font-size:10px;color:var(--outline)">Confidence: ${f.confidence_pct}%</div>
+            </div>
+          </div>
+        `).join("")}
+      </div>
+    </div>` : ""}
+
+    <!-- Fund Signal Table -->
+    <div class="brief-section">
+      <div class="brief-section-title">📊 Fund Signal Table</div>
+      <div class="brief-table-wrap">
+        <table class="brief-table">
+          <thead>
+            <tr>
+              <th>Fund</th><th>Category</th><th>12M Forecast</th>
+              <th>Direction</th><th>Fundamentals</th><th>Risk</th><th>Signal</th><th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${(brief.fund_signal_table || []).map(f => `
+              <tr>
+                <td style="font-weight:700;color:var(--on-surface);max-width:160px;word-break:break-word">${f.fund}</td>
+                <td><span style="font-size:10px;padding:2px 6px;background:var(--bg-highest);border-radius:3px;color:var(--on-surf-var)">${f.category}</span></td>
+                <td style="font-family:var(--font-headline);font-weight:700;color:${f.forecast_12m >= 12 ? "var(--secondary)" : f.forecast_12m >= 6 ? "#eab308" : "var(--on-tertiary-cont)"}">${f.forecast_12m > 0 ? "+" : ""}${f.forecast_12m}%</td>
+                <td>${dirBadge(f.direction)}</td>
+                <td>${gateBadge(f.fundamental_gate)}</td>
+                <td style="font-size:12px;color:var(--on-surf-var)">${f.risk_rating}</td>
+                <td>${signalBadge(f.signal)}</td>
+                <td style="font-size:11px;color:var(--on-surf-var);max-width:180px">${f.action}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Pause / Exit Funds -->
+    ${brief.pause_or_exit?.length ? `
+    <div class="brief-section">
+      <div class="brief-section-title">⚠ Funds on Watch / Pause / Exit</div>
+      <div class="brief-caution-list">
+        ${brief.pause_or_exit.map(f => `
+          <div class="caution-card">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+              ${signalBadge(f.signal)}
+              <span style="font-weight:700;color:var(--on-surface)">${f.fund}</span>
+            </div>
+            <div style="font-size:11px;color:var(--on-surf-var);line-height:1.6">${f.reason}</div>
+            <div style="margin-top:6px;font-style:italic;font-size:11px;color:var(--outline)">→ ${f.action}</div>
+          </div>
+        `).join("")}
+      </div>
+    </div>` : ""}
+
+    <!-- Guardrail Notes -->
+    <div class="brief-section">
+      <div class="brief-section-title">🛡 Portfolio Guardrails</div>
+      <div class="brief-guardrails">
+        ${(brief.guardrails?.guardrail_notes || []).map(n => `
+          <div class="guardrail-note">${n}</div>
+        `).join("")}
+      </div>
+    </div>
+
+    <!-- Disclaimer -->
+    <div class="brief-disclaimer">${brief.disclaimer}</div>
+  `;
+}
+
+// ── Load brief (lazy, cached) ─────────────────────────────────────────────
+async function loadFundBrief(forceRefresh = false) {
+  if (_briefLoaded && !forceRefresh && _briefData) {
+    renderMonthlyBrief(_briefData);
+    return;
+  }
+
+  const el = document.getElementById("mfBriefPanel");
+  if (!el) return;
+
+  el.innerHTML = `
+    <div style="text-align:center;padding:40px 0;color:var(--outline)">
+      <div class="neural-dots" style="justify-content:center;display:flex;gap:6px;margin-bottom:16px">
+        <span style="width:8px;height:8px;border-radius:50%;background:var(--primary);animation:pulse 1.2s ease-in-out infinite"></span>
+        <span style="width:8px;height:8px;border-radius:50%;background:var(--primary);animation:pulse 1.2s ease-in-out 0.2s infinite"></span>
+        <span style="width:8px;height:8px;border-radius:50%;background:var(--primary);animation:pulse 1.2s ease-in-out 0.4s infinite"></span>
+      </div>
+      <div style="font-family:var(--font-headline);font-size:15px;color:var(--on-surf-var);margin-bottom:6px">Running 3-Layer Analysis</div>
+      <div style="font-size:12px">Fetching NAV history · Computing Piotroski F-Score · Altman Z-Score · GBM forecast…</div>
+      <div style="font-size:11px;margin-top:10px;color:var(--outline)">This may take 30–60 seconds</div>
+    </div>`;
+
+  try {
+    const res  = await fetch(`${API}/api/mutual-funds/brief`);
+    const data = await res.json();
+    _briefLoaded = true;
+    renderMonthlyBrief(data);
+  } catch (e) {
+    el.innerHTML = `<div style="padding:24px;color:var(--on-tertiary-cont);text-align:center">
+      ⚠ Backend offline or analysis failed.<br>
+      <span style="font-size:12px;color:var(--outline)">Start the FastAPI server and try again.</span>
+      <br><button onclick="loadFundBrief(true)" style="margin-top:12px;padding:8px 16px;background:var(--bg-high);color:var(--primary);border:1px solid rgba(168,232,255,0.2);border-radius:6px;cursor:pointer;font-family:var(--font-headline)">Retry</button>
+    </div>`;
+  }
 }
 
 // ============================================================================
@@ -937,8 +1201,228 @@ function renderLongTerm(d) {
   // Rebalance
   document.getElementById("ltRebalance").textContent = `🔄 ${d.rebalance_cadence}`;
 
+  // ── Long-Term Price Projection Chart ───────────────────────────────────────
+  drawLongTermProjectionChart(d);
+
   loader.style.display = "none";
   results.classList.remove("hidden");
+}
+
+// Chart instance for long-term projection
+let _ltProjChart = null;
+
+async function drawLongTermProjectionChart(d) {
+  // Inject chart container if not already present
+  let chartContainer = document.getElementById("ltProjChartWrap");
+  if (!chartContainer) {
+    const resultsEl = document.getElementById("ltResults");
+    chartContainer = document.createElement("div");
+    chartContainer.id = "ltProjChartWrap";
+    chartContainer.style.cssText = "margin:20px 0 8px;background:rgba(10,12,18,0.6);border:1px solid rgba(60,73,78,0.25);border-radius:12px;padding:16px 16px 8px;";
+    chartContainer.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div>
+          <div style="font-family:var(--font-headline,Space Grotesk),sans-serif;font-size:13px;font-weight:700;color:#bbc9cf">📈 12-Month Price Projection</div>
+          <div style="font-size:11px;color:#859398;margin-top:2px">Based on 5-Pillar composite score · fundamental + technical trajectory</div>
+        </div>
+        <div id="ltProjBadge" style="display:flex;align-items:center;gap:6px;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;background:rgba(168,232,255,0.08);color:#a8e8ff">
+          <span style="width:6px;height:6px;border-radius:50%;background:#a8e8ff;display:inline-block"></span>
+          MODEL PROJECTION
+        </div>
+      </div>
+      <div style="position:relative;height:200px"><canvas id="ltProjChart"></canvas></div>
+      <div id="ltProjMetrics" style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"></div>
+    `;
+    // Insert before exit triggers section
+    const exitEl = resultsEl.querySelector(".lt-exit-triggers");
+    if (exitEl) resultsEl.insertBefore(chartContainer, exitEl);
+    else resultsEl.appendChild(chartContainer);
+  }
+
+  // Fetch real historical price data for anchor
+  let currentPrice = 0;
+  let histPrices = [];
+  let histLabels = [];
+  try {
+    const ticker = currentTicker;
+    if (!ticker) return;
+    const res = await fetch(`${API}/api/chart/${ticker}?timeframe=1y`);
+    const cData = await res.json();
+    if (cData.data && cData.data.length > 0) {
+      histPrices = cData.data.map(p => p.close);
+      histLabels = cData.data.map(p => p.time);
+      currentPrice = histPrices[histPrices.length - 1];
+    }
+  } catch(e) { console.error("LT chart fetch error", e); }
+
+  if (!currentPrice || currentPrice === 0) return;
+
+  // Build 12-month projection from composite score
+  const score = d.composite_score; // 0-10
+  const techScore = (d.pillars?.technical?.score || 5) / 10;
+  const fundScore = (d.pillars?.fundamental?.score || 5) / 10;
+  const growthScore = (d.pillars?.growth?.score || 5) / 10;
+
+  // Monthly expected return based on composite: maps score 0-10 → -2% to +3% monthly
+  const baseMonthlyReturn = ((score / 10) * 5 - 2) / 100; // -2% to +3%
+  const volatilityFactor = 1 - techScore * 0.3; // lower tech score = more volatile
+  const uncertainty = (1 - fundScore) * 0.015; // fundamental uncertainty band
+
+  const projLabels = [];
+  const projBase = [];
+  const projUpper = [];
+  const projLower = [];
+
+  const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const now = new Date();
+  let price = currentPrice;
+
+  for (let m = 1; m <= 12; m++) {
+    const d2 = new Date(now.getFullYear(), now.getMonth() + m, 1);
+    projLabels.push(MONTHS[d2.getMonth()] + " '" + String(d2.getFullYear()).slice(2));
+
+    // Mean-reverting growth with sector momentum
+    const monthlyGrowth = baseMonthlyReturn + (growthScore - 0.5) * 0.005;
+    price = price * (1 + monthlyGrowth);
+    const band = price * uncertainty * Math.sqrt(m);
+
+    projBase.push(parseFloat(price.toFixed(2)));
+    projUpper.push(parseFloat((price + band).toFixed(2)));
+    projLower.push(parseFloat((price - band).toFixed(2)));
+  }
+
+  // Use last 6 months of historical as anchor
+  const anchorCount = Math.min(6, Math.floor(histPrices.length / 4));
+  const anchorPrices = histPrices.slice(-anchorCount);
+  const anchorLabels = histLabels.slice(-anchorCount);
+
+  const allLabels = [...anchorLabels, ...projLabels];
+  const histSet   = [...anchorPrices, ...Array(12).fill(null)];
+  const projSet   = [...Array(anchorCount - 1).fill(null), anchorPrices[anchorCount - 1], ...projBase];
+  const upperSet  = [...Array(anchorCount).fill(null), ...projUpper];
+  const lowerSet  = [...Array(anchorCount).fill(null), ...projLower];
+
+  const targetPrice = projBase[projBase.length - 1];
+  const returnPct   = ((targetPrice - currentPrice) / currentPrice * 100).toFixed(1);
+  const isPositive  = targetPrice >= currentPrice;
+  const projColor   = score >= 7 ? "#40e56c" : score >= 5.5 ? "#a8e8ff" : score >= 4 ? "#eab308" : "#ef4444";
+
+  // Badge color
+  const badge = document.getElementById("ltProjBadge");
+  if (badge) {
+    badge.style.color = projColor;
+    badge.style.background = `rgba(${isPositive ? "64,229,108" : "239,68,68"},0.1)`;
+  }
+
+  if (_ltProjChart) _ltProjChart.destroy();
+
+  const canvas = document.getElementById("ltProjChart");
+  if (!canvas) return;
+
+  _ltProjChart = new Chart(canvas.getContext("2d"), {
+    type: "line",
+    data: {
+      labels: allLabels,
+      datasets: [
+        {
+          label: "Historical Prices",
+          data: histSet,
+          borderColor: "#3b82f6",
+          backgroundColor: "rgba(59,130,246,0.06)",
+          fill: false, tension: 0.3, pointRadius: 0, borderWidth: 2, order: 3,
+        },
+        {
+          label: "Upper Estimate",
+          data: upperSet,
+          borderColor: `${projColor}22`,
+          backgroundColor: `${projColor}14`,
+          fill: "+1", tension: 0.4, pointRadius: 0, borderWidth: 1, borderDash: [3, 4], order: 1,
+        },
+        {
+          label: "Lower Estimate",
+          data: lowerSet,
+          borderColor: `${projColor}22`,
+          backgroundColor: `${projColor}14`,
+          fill: false, tension: 0.4, pointRadius: 0, borderWidth: 1, borderDash: [3, 4], order: 1,
+        },
+        {
+          label: `12M Projection (Score ${d.composite_score}/10)`,
+          data: projSet,
+          borderColor: projColor,
+          backgroundColor: "transparent",
+          fill: false, tension: 0.4,
+          pointRadius: (ctx) => ctx.dataIndex === anchorCount - 1 || ctx.dataIndex === allLabels.length - 1 ? 5 : 0,
+          borderWidth: 2.5, borderDash: [7, 3], order: 2,
+          pointBackgroundColor: projColor,
+          pointBorderColor: "#0f1117",
+          pointBorderWidth: 1.5,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: "index", intersect: false },
+      plugins: {
+        legend: {
+          labels: {
+            color: "#6b7280", font: { size: 10 },
+            filter: (item) => !item.text.includes("Estimate"),
+          },
+        },
+        tooltip: {
+          backgroundColor: "#0f1117",
+          borderColor: "rgba(168,232,255,0.2)",
+          borderWidth: 1,
+          callbacks: {
+            label: (ctx) => {
+              if (ctx.dataset.label.includes("Estimate")) return null;
+              return `${ctx.dataset.label}: ₹${Number(ctx.raw || 0).toLocaleString("en-IN")}`;
+            },
+            afterBody: (items) => {
+              const idx = items[0]?.dataIndex;
+              if (idx !== undefined && idx >= anchorCount) {
+                const u = upperSet[idx], l = lowerSet[idx];
+                if (u && l) return [`Range: ₹${Number(l).toLocaleString("en-IN")} – ₹${Number(u).toLocaleString("en-IN")}`];
+              }
+              return [];
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          ticks: { color: "#4b5563", maxTicksLimit: 10, maxRotation: 0, font: { size: 9 } },
+          grid: { color: "rgba(31,41,55,0.4)" },
+        },
+        y: {
+          ticks: {
+            color: "#4b5563", font: { size: 9 },
+            callback: (v) => "₹" + (v >= 1e5 ? (v/1e5).toFixed(1)+"L" : Number(v).toLocaleString("en-IN")),
+          },
+          grid: { color: "rgba(31,41,55,0.4)" },
+        },
+      },
+    },
+  });
+
+  // Metrics strip
+  const metricsEl = document.getElementById("ltProjMetrics");
+  if (metricsEl) {
+    const metricItems = [
+      { label: "Current Price", value: `₹${Number(currentPrice).toLocaleString("en-IN")}`, color: "#a8e8ff" },
+      { label: "12M Target", value: `₹${Number(targetPrice).toLocaleString("en-IN")}`, color: projColor },
+      { label: "Expected Return", value: `${isPositive ? "+" : ""}${returnPct}%`, color: projColor },
+      { label: "Composite Score", value: `${d.composite_score}/10`, color: projColor },
+      { label: "Conviction", value: d.verdict.split(" ").slice(0,2).join(" "), color: projColor },
+    ];
+    metricsEl.innerHTML = metricItems.map(m => `
+      <div style="flex:1;min-width:100px;background:rgba(255,255,255,0.03);border:1px solid rgba(60,73,78,0.2);border-radius:8px;padding:8px 10px;text-align:center">
+        <div style="font-size:10px;color:#859398;margin-bottom:4px">${m.label}</div>
+        <div style="font-family:var(--font-headline,Space Grotesk),sans-serif;font-size:13px;font-weight:700;color:${m.color}">${m.value}</div>
+      </div>
+    `).join("");
+  }
 }
 
 
@@ -1250,11 +1734,13 @@ async function loadPrediction(ticker, version) {
   const chartWrap = document.getElementById("predChartWrap");
   const msgEl = document.getElementById("predLoaderMsg");
 
-
   section.classList.remove("hidden");
   loader.classList.remove("hidden");
   chartWrap.style.display = "none";
 
+  // Remove any previous retry button
+  const oldRetry = document.getElementById("predRetryBtn");
+  if (oldRetry) oldRetry.remove();
 
   let msgIdx = 0;
   msgEl.textContent = PRED_MESSAGES[0];
@@ -1263,15 +1749,26 @@ async function loadPrediction(ticker, version) {
     msgEl.textContent = PRED_MESSAGES[msgIdx];
   }, 3000);
 
+  // 90-second timeout controller
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 90000);
+
+  // Show "still working" message after 20s
+  const slowWarningId = setTimeout(() => {
+    if (msgEl) msgEl.textContent = "⏳ LSTM training in progress — this takes 30–90s on first run…";
+  }, 20000);
+
   try {
-    const res = await fetch(`${API}/api/predict/${ticker}`);
+    const res = await fetch(`${API}/api/predict/${ticker}`, { signal: controller.signal });
+    clearTimeout(timeoutId);
+    clearTimeout(slowWarningId);
+
     if (version !== undefined && version !== loadVersion) {
       clearInterval(predMsgInterval);
       return;
     }
     const data = await res.json();
 
-    // Handle API error responses
     if (data.detail) {
       clearInterval(predMsgInterval);
       msgEl.textContent = "⚠️ " + data.detail;
@@ -1279,8 +1776,6 @@ async function loadPrediction(ticker, version) {
     }
 
     clearInterval(predMsgInterval);
-
-
     loader.classList.add("hidden");
     chartWrap.style.display = "";
 
@@ -1303,10 +1798,24 @@ async function loadPrediction(ticker, version) {
       drawPredictionChart(data);
     }
     renderFactorBreakdown(data);
+
   } catch (e) {
-    console.error("Prediction error:", e);
+    clearTimeout(timeoutId);
+    clearTimeout(slowWarningId);
     clearInterval(predMsgInterval);
-    msgEl.textContent = "⚠️ Forecast failed — try again";
+
+    if (e.name === "AbortError") {
+      // Timeout — show retry UI
+      msgEl.innerHTML = "⏳ LSTM is still training on the server (can take 2-5 min first time).<br><span style='font-size:11px;color:#859398'>The model will be cached after first run — future loads are instant.</span>";
+      const retryBtn = document.createElement("button");
+      retryBtn.id = "predRetryBtn";
+      retryBtn.textContent = "🔄 Check Again";
+      retryBtn.style.cssText = "margin-top:14px;padding:8px 20px;background:rgba(168,232,255,0.1);color:#a8e8ff;border:1px solid rgba(168,232,255,0.3);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit";
+      retryBtn.onclick = () => { retryBtn.remove(); loadPrediction(ticker, version); };
+      loader.querySelector(".pred-loader-inner")?.appendChild(retryBtn);
+    } else {
+      msgEl.textContent = "⚠️ Forecast failed — " + (e.message || "try again");
+    }
   }
 }
 
@@ -1373,7 +1882,7 @@ function renderFactorBreakdown(data) {
 function drawPredictionChart(pred) {
   const hist = pred.historical_last_30;
   const future = pred.predicted_prices;
-
+  const confidence = pred.confidence || 50;
 
   const histDates = pred.historical_dates || [];
   const predDates = pred.prediction_dates || [];
@@ -1386,8 +1895,21 @@ function drawPredictionChart(pred) {
     labels.push(predDates[i] || `+${i + 1}d`);
   }
 
-  const histData = [...hist, ...Array(future.length).fill(null)];
-  const predData = [...Array(hist.length - 1).fill(null), hist[hist.length - 1], ...future];
+  const histData    = [...hist, ...Array(future.length).fill(null)];
+  const predData    = [...Array(hist.length - 1).fill(null), hist[hist.length - 1], ...future];
+
+  // Confidence band — uncertainty grows with lower confidence and further into future
+  const uncertaintyFactor = (100 - confidence) / 100; // 0=certain, 1=very uncertain
+  const bandUpper = [...Array(hist.length).fill(null)];
+  const bandLower = [...Array(hist.length).fill(null)];
+  // overlap at last historical point
+  bandUpper[hist.length - 1] = hist[hist.length - 1];
+  bandLower[hist.length - 1] = hist[hist.length - 1];
+  for (let i = 0; i < future.length; i++) {
+    const spread = future[i] * uncertaintyFactor * 0.018 * (i + 1); // ±1.8% per day scaled by uncertainty
+    bandUpper.push(parseFloat((future[i] + spread).toFixed(2)));
+    bandLower.push(parseFloat((future[i] - spread).toFixed(2)));
+  }
 
   if (predChart) predChart.destroy();
 
@@ -1396,16 +1918,92 @@ function drawPredictionChart(pred) {
     data: {
       labels,
       datasets: [
-        { label: "Historical", data: histData, borderColor: "#3b82f6", backgroundColor: "rgba(59,130,246,0.05)", fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2 },
-        { label: "Forecast", data: predData, borderColor: "#22c55e", borderDash: [6, 3], backgroundColor: "rgba(34,197,94,0.08)", fill: true, tension: 0.3, pointRadius: 4, borderWidth: 2, pointBackgroundColor: "#22c55e" },
+        {
+          label: "Historical",
+          data: histData,
+          borderColor: "#3b82f6",
+          backgroundColor: "rgba(59,130,246,0.05)",
+          fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2,
+          order: 3,
+        },
+        {
+          label: "Upper Band",
+          data: bandUpper,
+          borderColor: "rgba(34,197,94,0.15)",
+          backgroundColor: "rgba(34,197,94,0.10)",
+          fill: "+1", tension: 0.3, pointRadius: 0, borderWidth: 1,
+          borderDash: [2, 4],
+          order: 1,
+        },
+        {
+          label: "Lower Band",
+          data: bandLower,
+          borderColor: "rgba(34,197,94,0.15)",
+          backgroundColor: "rgba(34,197,94,0.10)",
+          fill: false, tension: 0.3, pointRadius: 0, borderWidth: 1,
+          borderDash: [2, 4],
+          order: 1,
+        },
+        {
+          label: `Forecast (${confidence}% confidence)`,
+          data: predData,
+          borderColor: "#22c55e",
+          borderDash: [6, 3],
+          backgroundColor: "transparent",
+          fill: false, tension: 0.3,
+          pointRadius: (ctx) => ctx.dataIndex >= hist.length - 1 ? 5 : 0,
+          borderWidth: 2.5,
+          pointBackgroundColor: "#22c55e",
+          pointBorderColor: "#0f1117",
+          pointBorderWidth: 1.5,
+          order: 2,
+        },
       ],
     },
     options: {
       responsive: true,
-      plugins: { legend: { labels: { color: "#6b7280" } } },
+      maintainAspectRatio: false,
+      interaction: { mode: "index", intersect: false },
+      plugins: {
+        legend: {
+          labels: {
+            color: "#6b7280",
+            filter: (item) => !item.text.includes("Band"), // hide band labels
+          },
+        },
+        tooltip: {
+          backgroundColor: "#0f1117",
+          borderColor: "rgba(34,197,94,0.3)",
+          borderWidth: 1,
+          callbacks: {
+            label: (ctx) => {
+              if (ctx.dataset.label.includes("Band")) return null;
+              const val = ctx.raw;
+              if (val === null) return null;
+              return `${ctx.dataset.label}: ₹${Number(val).toLocaleString("en-IN")}`;
+            },
+            afterBody: (items) => {
+              const idx = items[0]?.dataIndex;
+              if (idx !== undefined && idx >= hist.length) {
+                const forecastDay = idx - hist.length + 1;
+                const upper = bandUpper[idx];
+                const lower = bandLower[idx];
+                if (upper && lower) {
+                  return [`Range: ₹${Number(lower).toLocaleString("en-IN")} – ₹${Number(upper).toLocaleString("en-IN")}`, `Confidence: ${confidence}%`];
+                }
+              }
+              return [];
+            },
+          },
+        },
+        annotation: undefined,
+      },
       scales: {
-        x: { ticks: { color: "#4b5563", maxTicksLimit: 10, maxRotation: 45, font: { size: 9 } }, grid: { color: "#1f2937" } },
-        y: { ticks: { color: "#4b5563", font: { size: 10 } }, grid: { color: "#1f2937" } },
+        x: { ticks: { color: "#4b5563", maxTicksLimit: 10, maxRotation: 45, font: { size: 9 } }, grid: { color: "rgba(31,41,55,0.6)" } },
+        y: {
+          ticks: { color: "#4b5563", font: { size: 10 }, callback: (v) => "₹" + Number(v).toLocaleString("en-IN") },
+          grid: { color: "rgba(31,41,55,0.6)" }
+        },
       },
     },
   });
