@@ -1,10 +1,10 @@
-# 📈 StockSense AI — AI-Powered Stock Market Prediction
+# 📈 AARTHI-AI — AI-Powered Stock Market Prediction
 
 > **Hackathon Project** | Built in 48 hours
 
 ##🎤 Elevator Pitch (30 seconds)
 
-*"StockSense AI uses deep learning and NLP to predict stock prices 5 days ahead.
+*"AARTHI-AI uses deep learning and NLP to predict stock prices 5 days ahead.
 Enter any ticker — our LSTM model analyzes 2 years of market data and technical
 indicators, while FinBERT reads the latest financial news to gauge market
 sentiment. You get an interactive chart with predictions, a confidence score,
