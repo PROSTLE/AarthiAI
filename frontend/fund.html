@@ -44,13 +44,8 @@
     .fo-nav-sub { font-size: 12px; color: var(--outline); margin-top: 4px; }
 
     /* Stats bar */
-    .fo-stats-bar {
-      display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 24px;
-    }
-    .fo-stat {
-      background: var(--bg-low); border: 1px solid rgba(60,73,78,0.12);
-      border-radius: var(--radius-lg); padding: 16px 18px;
-    }
+    .fo-stats-bar { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 24px; }
+    .fo-stat { background: var(--bg-low); border: 1px solid rgba(60,73,78,0.12); border-radius: var(--radius-lg); padding: 16px 18px; }
     .fo-stat-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--outline); margin-bottom: 6px; }
     .fo-stat-value { font-family: var(--font-headline); font-size: 20px; font-weight: 700; color: var(--on-surface); }
     .fo-stat-sub { font-size: 11px; color: var(--outline); margin-top: 3px; }
@@ -63,10 +58,7 @@
       border-radius: var(--radius-lg); padding: 20px; text-align: center;
       position: relative; overflow: hidden;
     }
-    .fo-return-card::after {
-      content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 3px;
-      background: linear-gradient(90deg, var(--secondary), var(--primary));
-    }
+    .fo-return-card::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, var(--secondary), var(--primary)); }
     .fo-ret-period { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--outline); margin-bottom: 8px; }
     .fo-ret-val { font-family: var(--font-headline); font-size: 28px; font-weight: 700; color: var(--secondary); }
     .fo-ret-label { font-size: 11px; color: var(--outline); margin-top: 4px; }
@@ -75,10 +67,15 @@
     .fo-bento { display: grid; grid-template-columns: 1fr 340px; gap: 16px; }
     @media (max-width: 1100px) { .fo-bento { grid-template-columns: 1fr; } }
 
-    /* Chart card */
+    /* Chart cards */
     .fo-chart-card { background: var(--bg-low); border: 1px solid rgba(60,73,78,0.12); border-radius: var(--radius-lg); padding: 22px; margin-bottom: 16px; }
     .fo-chart-card h3 { font-family: var(--font-headline); font-size: 15px; font-weight: 700; margin-bottom: 16px; }
     .fo-chart-wrap { height: 220px; }
+    .fo-chart-wrap-sm { height: 200px; }
+
+    /* Two-col chart grid */
+    .fo-chart-duo { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+    @media (max-width: 800px) { .fo-chart-duo { grid-template-columns: 1fr; } }
 
     /* AI analysis card */
     .fo-ai-card {
@@ -90,13 +87,22 @@
     .fo-ai-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--primary); margin-bottom: 10px; }
     .fo-ai-text { font-size: 13px; color: var(--on-surf-var); line-height: 1.65; }
 
-    /* Holdings / details */
+    /* Holdings table */
     .fo-detail-card { background: var(--bg-low); border: 1px solid rgba(60,73,78,0.12); border-radius: var(--radius-lg); padding: 20px; margin-bottom: 16px; }
     .fo-detail-card h3 { font-family: var(--font-headline); font-size: 15px; font-weight: 700; margin-bottom: 14px; }
     .fo-detail-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(60,73,78,0.08); font-size: 13px; }
     .fo-detail-row:last-child { border-bottom: none; }
     .fo-detail-label { color: var(--on-surf-var); }
     .fo-detail-val { font-weight: 700; color: var(--on-surface); }
+
+    /* Holdings bar */
+    .holding-row { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid rgba(60,73,78,0.06); }
+    .holding-row:last-child { border-bottom: none; }
+    .holding-rank { font-family: var(--font-headline); font-weight: 700; font-size: 11px; color: var(--outline); width: 18px; text-align: center; }
+    .holding-name { flex: 1; font-size: 13px; font-weight: 600; color: var(--on-surface); }
+    .holding-pct { font-family: var(--font-headline); font-weight: 700; font-size: 13px; color: var(--primary); width: 50px; text-align: right; }
+    .holding-bar { flex: 0 0 100px; height: 6px; background: var(--bg-highest); border-radius: 3px; overflow: hidden; }
+    .holding-bar-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--primary), #00d4ff); }
 
     /* SIP CTA */
     .fo-sip-card {
@@ -236,11 +242,27 @@
       <div class="fo-bento">
         <!-- Left -->
         <div>
-          <!-- Returns chart -->
+          <!-- Returns bar chart -->
           <div class="fo-chart-card">
             <h3>📈 Historical Performance Comparison</h3>
             <div class="fo-chart-wrap">
               <canvas id="fo-chart"></canvas>
+            </div>
+          </div>
+
+          <!-- Two charts side by side: NAV Trend + Sector Allocation -->
+          <div class="fo-chart-duo">
+            <div class="fo-chart-card">
+              <h3>📊 NAV Growth Trend (1Y)</h3>
+              <div class="fo-chart-wrap-sm">
+                <canvas id="fo-nav-chart"></canvas>
+              </div>
+            </div>
+            <div class="fo-chart-card">
+              <h3>🎯 Sector Allocation</h3>
+              <div class="fo-chart-wrap-sm">
+                <canvas id="fo-sector-chart"></canvas>
+              </div>
             </div>
           </div>
 
@@ -249,6 +271,12 @@
             <div class="fo-ai-bg">🤖</div>
             <div class="fo-ai-title">🤖 AI Investment Signal</div>
             <div class="fo-ai-text" id="fo-ai-text">Generating AI analysis for this fund...</div>
+          </div>
+
+          <!-- Top Holdings -->
+          <div class="fo-detail-card">
+            <h3>📋 Top Holdings</h3>
+            <div id="fo-holdings"></div>
           </div>
 
           <!-- Fund Details -->
@@ -284,6 +312,12 @@
             <div id="fo-risk-desc" style="font-size:12px;color:var(--on-surf-var);margin-top:12px;line-height:1.6;"></div>
           </div>
 
+          <!-- Asset Allocation Pie -->
+          <div class="fo-detail-card">
+            <h3>🏦 Asset Allocation</h3>
+            <div style="height:180px;"><canvas id="fo-asset-chart"></canvas></div>
+          </div>
+
           <!-- Why this fund -->
           <div class="fo-detail-card">
             <h3>✅ Why Consider This Fund</h3>
@@ -312,32 +346,65 @@
 </footer>
 
 <script>
-const API = "http://127.0.0.1:8001";
+const API = "http://127.0.0.1:8000";
 
-// ── Fund universe (mirrors backend fund_intelligence.py) ──────────────────────
-// We'll fetch from /api/mutual-funds and find the matching fund by name.
-// Static enrichment data for AI signals and descriptions.
+// ── Local fund database for offline fallback ──
+const LOCAL_MF = [
+  {name:"SBI Bluechip Fund Direct",amc:"SBI",category:"Equity",sub_category:"Large Cap",nav:82.45,aum_cr:48200,return_1y:21.4,return_3y:16.8,return_5y:14.2,expense_ratio:0.52,risk:"Moderate",rating:5,min_sip:500},
+  {name:"Axis Bluechip Fund Direct",amc:"Axis",category:"Equity",sub_category:"Large Cap",nav:54.78,aum_cr:38500,return_1y:18.2,return_3y:14.5,return_5y:13.1,expense_ratio:0.44,risk:"Moderate",rating:4,min_sip:500},
+  {name:"HDFC Top 100 Fund Direct",amc:"HDFC",category:"Equity",sub_category:"Large Cap",nav:1024.30,aum_cr:52000,return_1y:22.8,return_3y:18.2,return_5y:15.6,expense_ratio:0.61,risk:"Moderate",rating:5,min_sip:100},
+  {name:"Mirae Asset Large Cap Fund Direct",amc:"Mirae Asset",category:"Equity",sub_category:"Large Cap",nav:108.64,aum_cr:37800,return_1y:20.1,return_3y:15.9,return_5y:14.8,expense_ratio:0.53,risk:"Moderate",rating:5,min_sip:1000},
+  {name:"Axis Midcap Fund Direct",amc:"Axis",category:"Equity",sub_category:"Mid Cap",nav:112.60,aum_cr:22400,return_1y:28.2,return_3y:22.1,return_5y:19.4,expense_ratio:0.47,risk:"High",rating:5,min_sip:500},
+  {name:"HDFC Mid-Cap Opportunities Direct",amc:"HDFC",category:"Equity",sub_category:"Mid Cap",nav:188.45,aum_cr:61200,return_1y:30.2,return_3y:24.6,return_5y:21.8,expense_ratio:0.70,risk:"High",rating:5,min_sip:100},
+  {name:"Quant Small Cap Fund Direct",amc:"Quant",category:"Equity",sub_category:"Small Cap",nav:244.50,aum_cr:18200,return_1y:38.4,return_3y:32.1,return_5y:26.8,expense_ratio:0.62,risk:"Very High",rating:5,min_sip:1000},
+  {name:"Nippon India Small Cap Direct",amc:"Nippon",category:"Equity",sub_category:"Small Cap",nav:138.20,aum_cr:41000,return_1y:34.2,return_3y:28.7,return_5y:24.1,expense_ratio:0.68,risk:"Very High",rating:4,min_sip:100},
+  {name:"Parag Parikh Flexi Cap Direct",amc:"Parag Parikh",category:"Equity",sub_category:"Flexi Cap",nav:78.42,aum_cr:68400,return_1y:24.8,return_3y:19.6,return_5y:22.1,expense_ratio:0.59,risk:"Moderate",rating:5,min_sip:1000},
+  {name:"HDFC Flexi Cap Fund Direct",amc:"HDFC",category:"Equity",sub_category:"Flexi Cap",nav:1928.40,aum_cr:54300,return_1y:26.4,return_3y:21.8,return_5y:18.6,expense_ratio:0.75,risk:"High",rating:5,min_sip:100},
+  {name:"ICICI Pru Technology Direct",amc:"ICICI",category:"Equity",sub_category:"Thematic",nav:162.10,aum_cr:10900,return_1y:42.2,return_3y:28.4,return_5y:22.6,expense_ratio:0.79,risk:"Very High",rating:4,min_sip:100},
+  {name:"SBI Focused Equity Fund Direct",amc:"SBI",category:"Hybrid",sub_category:"Aggressive",nav:288.12,aum_cr:29800,return_1y:22.1,return_3y:17.4,return_5y:15.9,expense_ratio:0.51,risk:"High",rating:5,min_sip:500},
+  {name:"HDFC Balanced Advantage Direct",amc:"HDFC",category:"Hybrid",sub_category:"Dynamic",nav:421.80,aum_cr:82000,return_1y:16.8,return_3y:14.2,return_5y:12.9,expense_ratio:0.72,risk:"Moderate",rating:4,min_sip:100},
+  {name:"ICICI Pru Balanced Advantage Direct",amc:"ICICI",category:"Hybrid",sub_category:"Dynamic",nav:64.20,aum_cr:54800,return_1y:18.2,return_3y:14.8,return_5y:13.6,expense_ratio:0.78,risk:"Moderate",rating:5,min_sip:1000},
+  {name:"HDFC Corporate Bond Direct",amc:"HDFC",category:"Debt",sub_category:"Corporate Bond",nav:28.45,aum_cr:31000,return_1y:7.8,return_3y:7.2,return_5y:7.4,expense_ratio:0.25,risk:"Low",rating:5,min_sip:5000},
+  {name:"Nippon India Liquid Fund Direct",amc:"Nippon",category:"Debt",sub_category:"Liquid",nav:6282.40,aum_cr:14200,return_1y:7.2,return_3y:6.8,return_5y:6.4,expense_ratio:0.18,risk:"Low",rating:5,min_sip:100},
+  {name:"Nifty 50 Index Fund - UTI Direct",amc:"UTI",category:"Index",sub_category:"Large Cap Index",nav:142.60,aum_cr:18600,return_1y:19.4,return_3y:15.2,return_5y:14.1,expense_ratio:0.05,risk:"Moderate",rating:4,min_sip:100},
+  {name:"Kotak Gold & Silver Passive FoF",amc:"Kotak",category:"Index",sub_category:"Gold & Silver FoF",nav:14.82,aum_cr:1240,return_1y:18.6,return_3y:14.2,return_5y:12.8,expense_ratio:0.18,risk:"Moderate",rating:4,min_sip:100},
+  {name:"Motilal Oswal Nasdaq 100 FoF Direct",amc:"Motilal Oswal",category:"Index",sub_category:"International",nav:28.40,aum_cr:5600,return_1y:32.6,return_3y:16.4,return_5y:24.8,expense_ratio:0.10,risk:"High",rating:4,min_sip:500},
+];
 
-const FUND_AI_SIGNALS = {
-  "SBI Bluechip Fund Direct":      "Strong large-cap pick. SBI's flagship fund with consistent alpha generation over 10+ years. Good for conservative equity investors looking for stability.",
-  "Axis Bluechip Fund Direct":     "Technically bullish — diversified large-cap exposure with growth tilt. Low volatility beta suitable as a portfolio anchor.",
-  "HDFC Top 100 Fund Direct":      "Value-oriented large cap. HDFC's legacy fund rewards patient, buy-and-hold investors. Dividend re-investment boosts compounding.",
-  "Axis Midcap Fund Direct":       "High-conviction midcap picks. Sector rotation strategy. Best held for 5+ years to capture India's growing mid-segment.",
-  "Mirae Asset Large Cap Fund":    "Global quality screen applied to Indian large caps. Excellent for first-generation investors wanting disciplined, low-churn portfolios.",
-  "Parag Parikh Flexi Cap Fund":   "Unique global diversification. Invests in Indian + international equities. Protects against INR depreciation. Excellent long-term track record.",
-  "Nippon India Liquid Fund":      "Ultra-safe parking. 7-day returns better than savings accounts. Use for emergency fund or short-term surplus.",
-  "ICICI Pru Balanced Advantage":  "Dynamic asset allocation — equity exposure adjusted based on market valuations. Ideal for risk-averse equity investors.",
+// ── Simulated holdings per category ──
+const HOLDINGS_MAP = {
+  "Large Cap": [
+    {name:"Reliance Industries",pct:9.2},{name:"HDFC Bank",pct:8.4},{name:"ICICI Bank",pct:7.1},{name:"Infosys",pct:6.8},
+    {name:"TCS",pct:5.9},{name:"Bharti Airtel",pct:4.2},{name:"ITC",pct:3.8},{name:"L&T",pct:3.5},{name:"Kotak Bank",pct:3.1},{name:"Axis Bank",pct:2.8}
+  ],
+  "Mid Cap": [
+    {name:"Max Healthcare",pct:6.8},{name:"AU Small Finance",pct:5.9},{name:"Coforge",pct:5.4},{name:"Tube Investments",pct:4.8},
+    {name:"PB Fintech",pct:4.2},{name:"Sundaram Finance",pct:3.9},{name:"CG Power",pct:3.6},{name:"Persistent Systems",pct:3.4},{name:"Ashok Leyland",pct:3.1},{name:"Indian Hotels",pct:2.9}
+  ],
+  "Small Cap": [
+    {name:"KPIT Technologies",pct:4.2},{name:"Kalyan Jewellers",pct:3.8},{name:"CMS Info Systems",pct:3.5},{name:"JSW Infra",pct:3.2},
+    {name:"Gujarat Fluorochem",pct:2.9},{name:"Kaynes Technology",pct:2.7},{name:"Affle India",pct:2.5},{name:"Cera Sanitaryware",pct:2.3},{name:"HLE Glascoat",pct:2.1},{name:"Data Patterns",pct:1.9}
+  ],
+  "Flexi Cap": [
+    {name:"HDFC Bank",pct:8.8},{name:"Alphabet Inc.",pct:6.2},{name:"Microsoft Corp",pct:5.8},{name:"ICICI Bank",pct:5.4},
+    {name:"Bajaj Finance",pct:4.1},{name:"Infosys",pct:3.9},{name:"Amazon.com",pct:3.6},{name:"Axis Bank",pct:3.2},{name:"ITC",pct:2.8},{name:"Coal India",pct:2.4}
+  ],
 };
 
-const FUND_WHY = {
-  "SBI Bluechip Fund Direct":      "• Among India's oldest and most trusted large-cap funds\n• Consistent top-quartile 5Y returns\n• Low portfolio churn reduces tax drag\n• Ideal for SIP investors aged 25–40",
-  "Axis Bluechip Fund Direct":     "• Quality bias — invests in market leaders\n• Lower drawdowns vs. category average\n• Suitable for first-time equity investors\n• Excellent risk-adjusted return profile",
-  "HDFC Top 100 Fund Direct":      "• Value + quality combination\n• Large AUM = institutional trust\n• Regular dividend option available\n• Great for conservative aggressive hybrids",
-  "Axis Midcap Fund Direct":       "• India's mid-segment growing 2x GDP\n• Portfolio of emerging sector leaders\n• Higher return potential over 7+ years\n• Best combined with a large-cap anchor",
-  "Mirae Asset Large Cap Fund":    "• Global investment framework applied locally\n• Low expense ratio for category\n• Excellent downside protection\n• Consistent 5-star Morningstar rating",
-  "Parag Parikh Flexi Cap Fund":   "• Unique: holds Google, Microsoft, Amazon\n• Hedges against rupee depreciation\n• No front-end load\n• Best flexi-cap track record in India",
-  "Nippon India Liquid Fund":      "• Capital preservation guaranteed in normal markets\n• Same-day redemption available\n• Better than FD for 3-month surplus\n• No exit load after 7 days",
-  "ICICI Pru Balanced Advantage":  "• Goes defensive in overvalued markets automatically\n• Equity allocation ranges 30%–80%\n• Lower volatility than pure equity\n• Ideal for investors 10 years from retirement",
+// ── Sector allocation per category ──
+const SECTOR_MAP = {
+  "Equity": {labels:["Financial Services","IT","Energy","FMCG","Healthcare","Auto","Industrial","Others"],data:[32,18,14,9,7,6,5,9]},
+  "Hybrid": {labels:["Equity","Debt","Gold","Cash"],data:[65,25,5,5]},
+  "Debt":   {labels:["Govt Securities","Corporate Bonds","Money Market","Cash"],data:[40,35,15,10]},
+  "Index":  {labels:["Financial Services","IT","Energy","FMCG","Auto","Others"],data:[35,16,12,10,8,19]},
+};
+
+// ── Asset allocation per category ──
+const ASSET_MAP = {
+  "Equity": {labels:["Large Cap","Mid Cap","Small Cap","Cash"],data:[60,25,10,5],colors:["#a8e8ff","#40e56c","#eab308","#859398"]},
+  "Hybrid": {labels:["Equity","Debt","Gold","Cash"],data:[65,25,5,5],colors:["#a8e8ff","#eab308","#f97316","#859398"]},
+  "Debt":   {labels:["AAA Bonds","Govt Sec","T-Bills","Cash"],data:[45,30,15,10],colors:["#40e56c","#a8e8ff","#eab308","#859398"]},
+  "Index":  {labels:["Index Stocks","Cash"],data:[98,2],colors:["#a8e8ff","#859398"]},
 };
 
 function getRiskMeta(risk) {
@@ -350,33 +417,57 @@ function getRiskMeta(risk) {
   return map[risk] || map["Moderate"];
 }
 
+// ── Generate simulated NAV history (12 months) ──
+function generateNavHistory(nav, return1y) {
+  const points = 12;
+  const monthlyReturn = Math.pow(1 + return1y / 100, 1/12) - 1;
+  const startNav = nav / Math.pow(1 + monthlyReturn, points);
+  const history = [];
+  const labels = [];
+  const months = ["Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec","Jan","Feb","Mar"];
+  for (let i = 0; i <= points; i++) {
+    const volatility = 1 + (Math.random() - 0.5) * 0.03;
+    const v = startNav * Math.pow(1 + monthlyReturn, i) * volatility;
+    history.push(Math.round(v * 100) / 100);
+    labels.push(months[i % 12]);
+  }
+  return { labels, data: history };
+}
+
 async function loadFund() {
   const params = new URLSearchParams(window.location.search);
   const fundName = params.get("fund");
-  if (!fundName) {
-    window.location.href = "mutual-funds.html";
-    return;
-  }
+  if (!fundName) { window.location.href = "mutual-funds.html"; return; }
 
-  // Update page title
   document.title = `AarthiAI — ${fundName}`;
 
+  let fund = null;
+
+  // Try backend first
   try {
     const res = await fetch(`${API}/api/mutual-funds`);
     const data = await res.json();
-    const fund = data.funds.find(f => f.name === fundName) || data.funds[0];
+    fund = data.funds.find(f => f.name === fundName);
+  } catch(e) {}
 
-    renderFund(fund);
-    document.getElementById("fo-loading").style.display = "none";
-    document.getElementById("fo-content").style.display = "block";
-  } catch (e) {
+  // Fallback to local DB
+  if (!fund) {
+    fund = LOCAL_MF.find(f => f.name === fundName);
+  }
+
+  if (!fund) {
     document.getElementById("fo-loading").innerHTML = `
       <div class="fo-loading">
         <span style="font-size:48px;display:block;margin-bottom:16px">⚠️</span>
-        <p style="color:var(--on-tertiary-cont)">Could not load fund data — ensure the backend is running on port 8001.</p>
+        <p style="color:var(--on-tertiary-cont)">Fund "${fundName}" not found.</p>
         <a href="mutual-funds.html" style="display:inline-block;margin-top:16px;padding:10px 20px;background:var(--bg-mid);border-radius:var(--radius);color:var(--primary);font-weight:700">← Back to Funds</a>
       </div>`;
+    return;
   }
+
+  renderFund(fund);
+  document.getElementById("fo-loading").style.display = "none";
+  document.getElementById("fo-content").style.display = "block";
 }
 
 function renderFund(f) {
@@ -387,8 +478,8 @@ function renderFund(f) {
     "Index":   { bg: "rgba(64,229,108,0.1)",  color: "var(--secondary)" },
   };
   const riskColors = {
-    "Low":       "rgba(64,229,108,0.1)", "Moderate": "rgba(234,179,8,0.1)",
-    "High":      "rgba(249,115,22,0.1)", "Very High": "rgba(239,68,68,0.1)",
+    "Low": "rgba(64,229,108,0.1)", "Moderate": "rgba(234,179,8,0.1)",
+    "High": "rgba(249,115,22,0.1)", "Very High": "rgba(239,68,68,0.1)",
   };
   const cat = catColors[f.category] || catColors["Equity"];
   const stars = "★".repeat(f.rating) + "☆".repeat(5 - f.rating);
@@ -421,7 +512,7 @@ function renderFund(f) {
   ].map(s => `
     <div class="fo-stat">
       <div class="fo-stat-label">${s.label}</div>
-      <div class="fo-stat-value" style="font-size:${s.label==='Rating'?'20px':'20px'}">${s.value}</div>
+      <div class="fo-stat-value">${s.value}</div>
       <div class="fo-stat-sub">${s.sub}</div>
     </div>`).join('');
 
@@ -438,64 +529,134 @@ function renderFund(f) {
   document.getElementById("fo-risk-desc").textContent = rm.desc;
 
   // AI signal
-  const sig = FUND_AI_SIGNALS[f.name] || `${f.name} shows solid ${f.return_3y}% 3Y annualised return. With an expense ratio of ${f.expense_ratio}% and ${f.risk.toLowerCase()} risk profile, it suits investors looking for ${f.category.toLowerCase()} exposure over a medium-to-long term horizon.`;
+  const sig = `${f.name} shows solid ${f.return_3y}% 3-year annualised return with ${f.risk.toLowerCase()} risk. Expense ratio of ${f.expense_ratio}% is ${f.expense_ratio < 0.5 ? 'competitive' : f.expense_ratio < 1.0 ? 'reasonable' : 'relatively high'} for its category. AUM of ₹${f.aum_cr} Cr indicates ${f.aum_cr > 20000 ? 'very strong' : f.aum_cr > 5000 ? 'healthy' : 'growing'} investor confidence. ${f.category === 'Equity' ? 'Equity allocation provides growth potential for long-term wealth creation.' : f.category === 'Debt' ? 'Debt focus offers capital preservation and steady income.' : f.category === 'Index' ? 'Passive index-tracking ensures minimal tracking error and low costs.' : 'Hybrid allocation balances growth and stability.'}`;
   document.getElementById("fo-ai-text").textContent = sig;
 
   // Why this fund
-  const why = FUND_WHY[f.name] || `• Consistent performance in the ${f.sub_category} category\n• AUM of ₹${f.aum_cr} Cr indicates strong investor trust\n• ${f.return_1y}% 1Y return puts it top in its category\n• Suitable for ${f.risk.toLowerCase()} risk investors`;
+  const why = `• Consistent performance in the ${f.sub_category} category\n• AUM of ₹${f.aum_cr} Cr indicates strong investor trust\n• ${f.return_1y}% 1Y return — competitive within its peer group\n• Expense ratio: ${f.expense_ratio}% — ${f.expense_ratio < 0.5 ? 'among the lowest in category' : 'reasonable for active management'}\n• Suitable for ${f.risk.toLowerCase()} risk investors with ${f.risk === 'Low' ? '1-3' : f.risk === 'Moderate' ? '3-5' : '5+'} year horizon`;
   document.getElementById("fo-why").innerHTML = why.split('\n').map(line => `<div style="padding:3px 0">${line}</div>`).join('');
 
   // Fund details table
   document.getElementById("fo-details").innerHTML = [
-    { label: "Fund House",        value: `${f.amc} Mutual Fund` },
-    { label: "Category",          value: f.category },
-    { label: "Sub-Category",      value: f.sub_category },
-    { label: "Risk Level",        value: f.risk },
-    { label: "NAV",               value: `₹${f.nav.toFixed(2)}` },
-    { label: "AUM",               value: `₹${f.aum_cr} Cr` },
-    { label: "Expense Ratio",     value: `${f.expense_ratio}% p.a.` },
-    { label: "Minimum SIP",       value: `₹${f.min_sip}/month` },
-    { label: "1Y Return",         value: `+${f.return_1y}%` },
-    { label: "3Y Annualised",     value: `+${f.return_3y}%` },
-    { label: "5Y Annualised",     value: `+${f.return_5y}%` },
-    { label: "Star Rating",       value: `${f.rating}/5 ★` },
+    { label: "Fund House", value: `${f.amc} Mutual Fund` },
+    { label: "Category", value: f.category },
+    { label: "Sub-Category", value: f.sub_category },
+    { label: "Risk Level", value: f.risk },
+    { label: "NAV", value: `₹${f.nav.toFixed(2)}` },
+    { label: "AUM", value: `₹${f.aum_cr} Cr` },
+    { label: "Expense Ratio", value: `${f.expense_ratio}% p.a.` },
+    { label: "Minimum SIP", value: `₹${f.min_sip}/month` },
+    { label: "1Y Return", value: `+${f.return_1y}%` },
+    { label: "3Y Annualised", value: `+${f.return_3y}%` },
+    { label: "5Y Annualised", value: `+${f.return_5y}%` },
+    { label: "Star Rating", value: `${f.rating}/5 ★` },
   ].map(r => `
     <div class="fo-detail-row">
       <span class="fo-detail-label">${r.label}</span>
       <span class="fo-detail-val">${r.value}</span>
     </div>`).join('');
 
-  // Chart
-  const ctx = document.getElementById("fo-chart").getContext("2d");
-  const periods = ["1Y", "3Y", "5Y"];
-  const values  = [f.return_1y, f.return_3y, f.return_5y];
+  // ── Holdings table ──
+  const holdingsKey = f.sub_category in HOLDINGS_MAP ? f.sub_category : Object.keys(HOLDINGS_MAP).find(k => f.sub_category.includes(k)) || "Large Cap";
+  const holdings = HOLDINGS_MAP[holdingsKey] || HOLDINGS_MAP["Large Cap"];
+  document.getElementById("fo-holdings").innerHTML = holdings.map((h, i) => `
+    <div class="holding-row">
+      <span class="holding-rank">${i + 1}</span>
+      <span class="holding-name">${h.name}</span>
+      <div class="holding-bar"><div class="holding-bar-fill" style="width:${h.pct * 10}%"></div></div>
+      <span class="holding-pct">${h.pct}%</span>
+    </div>
+  `).join('');
 
+  // ── Returns bar chart ──
+  const ctx = document.getElementById("fo-chart").getContext("2d");
   new Chart(ctx, {
     type: "bar",
     data: {
-      labels: periods,
+      labels: ["1Y", "3Y", "5Y"],
       datasets: [{
         label: "Annualised Return (%)",
-        data: values,
+        data: [f.return_1y, f.return_3y, f.return_5y],
         backgroundColor: ["rgba(168,232,255,0.6)","rgba(64,229,108,0.6)","rgba(168,232,255,0.9)"],
-        borderRadius: 6,
-        borderSkipped: false,
+        borderRadius: 6, borderSkipped: false,
       }]
     },
     options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          backgroundColor: "#1a1c20",
-          borderColor: "rgba(60,73,78,0.3)", borderWidth: 1,
-          callbacks: { label: c => `+${c.raw}% Annualised` }
-        }
-      },
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { backgroundColor: "#1a1c20", borderColor: "rgba(60,73,78,0.3)", borderWidth: 1, callbacks: { label: c => `+${c.raw}% Annualised` } } },
       scales: {
         x: { grid: { color: "rgba(60,73,78,0.1)" }, ticks: { color: "#859398", font: { weight: "700" } } },
         y: { grid: { color: "rgba(60,73,78,0.1)" }, ticks: { color: "#859398", callback: v => v + "%" } }
+      }
+    }
+  });
+
+  // ── NAV Growth Trend (simulated 1Y) ──
+  const navHist = generateNavHistory(f.nav, f.return_1y);
+  const navCtx = document.getElementById("fo-nav-chart").getContext("2d");
+  new Chart(navCtx, {
+    type: "line",
+    data: {
+      labels: navHist.labels,
+      datasets: [{
+        label: "NAV (₹)",
+        data: navHist.data,
+        borderColor: "rgba(168,232,255,0.9)",
+        backgroundColor: "rgba(168,232,255,0.08)",
+        fill: true, tension: 0.4, pointRadius: 2, pointHoverRadius: 5,
+        borderWidth: 2,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { backgroundColor: "#1a1c20", borderColor: "rgba(60,73,78,0.3)", borderWidth: 1, callbacks: { label: c => `₹${c.raw}` } } },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: "#859398", font: { size: 10 } } },
+        y: { grid: { color: "rgba(60,73,78,0.08)" }, ticks: { color: "#859398", font: { size: 10 } } }
+      }
+    }
+  });
+
+  // ── Sector Allocation (doughnut) ──
+  const sectorData = SECTOR_MAP[f.category] || SECTOR_MAP["Equity"];
+  const sectorCtx = document.getElementById("fo-sector-chart").getContext("2d");
+  new Chart(sectorCtx, {
+    type: "doughnut",
+    data: {
+      labels: sectorData.labels,
+      datasets: [{
+        data: sectorData.data,
+        backgroundColor: ["#a8e8ff","#40e56c","#eab308","#a855f7","#f97316","#ef4444","#06b6d4","#859398"],
+        borderColor: "transparent", borderWidth: 0,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: "60%",
+      plugins: {
+        legend: { position: "right", labels: { color: "#b0b8bc", font: { size: 10 }, padding: 8, boxWidth: 10 } },
+        tooltip: { backgroundColor: "#1a1c20", borderColor: "rgba(60,73,78,0.3)", borderWidth: 1, callbacks: { label: c => `${c.label}: ${c.raw}%` } }
+      }
+    }
+  });
+
+  // ── Asset Allocation (pie in sidebar) ──
+  const assetData = ASSET_MAP[f.category] || ASSET_MAP["Equity"];
+  const assetCtx = document.getElementById("fo-asset-chart").getContext("2d");
+  new Chart(assetCtx, {
+    type: "pie",
+    data: {
+      labels: assetData.labels,
+      datasets: [{
+        data: assetData.data,
+        backgroundColor: assetData.colors,
+        borderColor: "transparent", borderWidth: 0,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: "bottom", labels: { color: "#b0b8bc", font: { size: 10 }, padding: 8, boxWidth: 10 } },
+        tooltip: { backgroundColor: "#1a1c20", callbacks: { label: c => `${c.label}: ${c.raw}%` } }
       }
     }
   });

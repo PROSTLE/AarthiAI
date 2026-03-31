@@ -15,6 +15,41 @@
     .mf-header h1 { font-family: var(--font-headline); font-size: 32px; font-weight: 700; letter-spacing: -0.03em; }
     .mf-header p { color: var(--on-surf-var); font-size: 14px; margin-top: 6px; }
 
+    /* Search bar — company-analysis style */
+    .mf-search-wrap { position: relative; max-width: 560px; margin-bottom: 28px; }
+    .mf-search-input {
+      width: 100%;
+      padding: 14px 18px 14px 46px;
+      background: var(--bg-mid);
+      border: 1px solid rgba(60,73,78,0.25);
+      border-radius: var(--radius-lg);
+      color: var(--on-surface);
+      font-size: 15px;
+      font-family: var(--font-headline);
+      font-weight: 600;
+      transition: border-color 0.15s ease;
+    }
+    .mf-search-input:focus { outline: none; border-color: var(--primary); }
+    .mf-search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--outline); }
+    .mf-search-suggestions {
+      position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+      background: var(--bg-mid); border: 1px solid rgba(60,73,78,0.2);
+      border-radius: var(--radius-lg); z-index: 50; overflow: hidden;
+      max-height: 320px; overflow-y: auto;
+      display: none;
+    }
+    .mf-search-suggestions.open { display: block; }
+    .mf-sug-item {
+      padding: 12px 16px; cursor: pointer; font-size: 13px;
+      display: flex; justify-content: space-between; align-items: center;
+      transition: background 0.1s ease;
+    }
+    .mf-sug-item:hover { background: var(--bg-high); }
+    .mf-sug-name { font-weight: 700; color: var(--on-surface); max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .mf-sug-meta { display: flex; gap: 8px; align-items: center; }
+    .mf-sug-badge { padding: 2px 8px; border-radius: 3px; font-size: 10px; font-weight: 700; text-transform: uppercase; }
+    .mf-sug-ret { font-family: var(--font-headline); font-weight: 700; font-size: 13px; color: var(--secondary); }
+
     .cat-filters { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 24px; }
     .cat-btn {
       padding: 7px 18px;
@@ -170,12 +205,7 @@
       <a class="tnav-link" href="company.html">Companies</a>
     </div>
   </div>
-  <div class="topnav-center">
-    <div class="topnav-search-wrap">
-      <span class="material-symbols-outlined topnav-search-icon">search</span>
-      <input id="mfSearch" type="text" class="topnav-search-input" placeholder="Search funds, AMC…" autocomplete="off" />
-    </div>
-  </div>
+  <div class="topnav-center"></div>
   <div class="topnav-right">
     <div class="live-badge"><span class="live-dot"></span><span>LIVE</span></div>
     <span class="material-symbols-outlined topnav-icon">notifications</span>
@@ -222,6 +252,13 @@
     <div class="mf-header">
       <h1>📊 Mutual Funds Explorer</h1>
       <p>Discover high-precision AI-ranked Indian mutual funds across all categories</p>
+    </div>
+
+    <!-- Search Bar (company-analysis style with autocomplete) -->
+    <div class="mf-search-wrap">
+      <span class="material-symbols-outlined mf-search-icon">search</span>
+      <input type="text" id="mfSearch" class="mf-search-input" placeholder="Search funds, AMC, category… e.g. Kotak Gold" autocomplete="off" oninput="handleMfSearchInput()" />
+      <div class="mf-search-suggestions" id="mfSuggestions"></div>
     </div>
 
     <!-- Category Filters -->
@@ -328,6 +365,102 @@ const API = "http://127.0.0.1:8000";
 let allFunds = [];
 let scatterChart = null;
 
+// ── Client-side MF_DATABASE fallback (works even when backend is offline) ──
+const LOCAL_MF_DATABASE = [
+  {name:"SBI Bluechip Fund Direct",amc:"SBI",category:"Equity",sub_category:"Large Cap",nav:82.45,aum_cr:48200,return_1y:21.4,return_3y:16.8,return_5y:14.2,expense_ratio:0.52,risk:"Moderate",rating:5,min_sip:500},
+  {name:"Axis Bluechip Fund Direct",amc:"Axis",category:"Equity",sub_category:"Large Cap",nav:54.78,aum_cr:38500,return_1y:18.2,return_3y:14.5,return_5y:13.1,expense_ratio:0.44,risk:"Moderate",rating:4,min_sip:500},
+  {name:"HDFC Top 100 Fund Direct",amc:"HDFC",category:"Equity",sub_category:"Large Cap",nav:1024.30,aum_cr:52000,return_1y:22.8,return_3y:18.2,return_5y:15.6,expense_ratio:0.61,risk:"Moderate",rating:5,min_sip:100},
+  {name:"Mirae Asset Large Cap Fund Direct",amc:"Mirae Asset",category:"Equity",sub_category:"Large Cap",nav:108.64,aum_cr:37800,return_1y:20.1,return_3y:15.9,return_5y:14.8,expense_ratio:0.53,risk:"Moderate",rating:5,min_sip:1000},
+  {name:"Kotak Bluechip Fund Direct",amc:"Kotak",category:"Equity",sub_category:"Large Cap",nav:482.10,aum_cr:8900,return_1y:19.4,return_3y:15.2,return_5y:14.0,expense_ratio:0.58,risk:"Moderate",rating:4,min_sip:100},
+  {name:"Axis Midcap Fund Direct",amc:"Axis",category:"Equity",sub_category:"Mid Cap",nav:112.60,aum_cr:22400,return_1y:28.2,return_3y:22.1,return_5y:19.4,expense_ratio:0.47,risk:"High",rating:5,min_sip:500},
+  {name:"Kotak Emerging Equity Direct",amc:"Kotak",category:"Equity",sub_category:"Mid Cap",nav:108.90,aum_cr:18900,return_1y:25.6,return_3y:20.3,return_5y:18.7,expense_ratio:0.38,risk:"High",rating:4,min_sip:1000},
+  {name:"HDFC Mid-Cap Opportunities Direct",amc:"HDFC",category:"Equity",sub_category:"Mid Cap",nav:188.45,aum_cr:61200,return_1y:30.2,return_3y:24.6,return_5y:21.8,expense_ratio:0.70,risk:"High",rating:5,min_sip:100},
+  {name:"Quant Small Cap Fund Direct",amc:"Quant",category:"Equity",sub_category:"Small Cap",nav:244.50,aum_cr:18200,return_1y:38.4,return_3y:32.1,return_5y:26.8,expense_ratio:0.62,risk:"Very High",rating:5,min_sip:1000},
+  {name:"Nippon India Small Cap Direct",amc:"Nippon",category:"Equity",sub_category:"Small Cap",nav:138.20,aum_cr:41000,return_1y:34.2,return_3y:28.7,return_5y:24.1,expense_ratio:0.68,risk:"Very High",rating:4,min_sip:100},
+  {name:"SBI Small Cap Fund Direct",amc:"SBI",category:"Equity",sub_category:"Small Cap",nav:184.30,aum_cr:24100,return_1y:33.6,return_3y:27.4,return_5y:23.8,expense_ratio:0.69,risk:"Very High",rating:5,min_sip:500},
+  {name:"Parag Parikh Flexi Cap Direct",amc:"Parag Parikh",category:"Equity",sub_category:"Flexi Cap",nav:78.42,aum_cr:68400,return_1y:24.8,return_3y:19.6,return_5y:22.1,expense_ratio:0.59,risk:"Moderate",rating:5,min_sip:1000},
+  {name:"HDFC Flexi Cap Fund Direct",amc:"HDFC",category:"Equity",sub_category:"Flexi Cap",nav:1928.40,aum_cr:54300,return_1y:26.4,return_3y:21.8,return_5y:18.6,expense_ratio:0.75,risk:"High",rating:5,min_sip:100},
+  {name:"Kotak Flexicap Fund Direct",amc:"Kotak",category:"Equity",sub_category:"Flexi Cap",nav:72.80,aum_cr:44800,return_1y:22.6,return_3y:17.4,return_5y:15.8,expense_ratio:0.59,risk:"Moderate",rating:4,min_sip:100},
+  {name:"Quant ELSS Tax Saver Direct",amc:"Quant",category:"Equity",sub_category:"ELSS",nav:394.80,aum_cr:6800,return_1y:42.1,return_3y:29.8,return_5y:28.4,expense_ratio:0.58,risk:"Very High",rating:5,min_sip:500},
+  {name:"ICICI Pru Technology Direct",amc:"ICICI",category:"Equity",sub_category:"Thematic",nav:162.10,aum_cr:10900,return_1y:42.2,return_3y:28.4,return_5y:22.6,expense_ratio:0.79,risk:"Very High",rating:4,min_sip:100},
+  {name:"ICICI Pru Infrastructure Direct",amc:"ICICI",category:"Equity",sub_category:"Thematic",nav:188.60,aum_cr:2840,return_1y:44.8,return_3y:31.2,return_5y:26.4,expense_ratio:1.22,risk:"Very High",rating:4,min_sip:100},
+  {name:"SBI Focused Equity Fund Direct",amc:"SBI",category:"Hybrid",sub_category:"Aggressive",nav:288.12,aum_cr:29800,return_1y:22.1,return_3y:17.4,return_5y:15.9,expense_ratio:0.51,risk:"High",rating:5,min_sip:500},
+  {name:"HDFC Balanced Advantage Direct",amc:"HDFC",category:"Hybrid",sub_category:"Dynamic",nav:421.80,aum_cr:82000,return_1y:16.8,return_3y:14.2,return_5y:12.9,expense_ratio:0.72,risk:"Moderate",rating:4,min_sip:100},
+  {name:"ICICI Pru Balanced Advantage Direct",amc:"ICICI",category:"Hybrid",sub_category:"Dynamic",nav:64.20,aum_cr:54800,return_1y:18.2,return_3y:14.8,return_5y:13.6,expense_ratio:0.78,risk:"Moderate",rating:5,min_sip:1000},
+  {name:"HDFC Corporate Bond Direct",amc:"HDFC",category:"Debt",sub_category:"Corporate Bond",nav:28.45,aum_cr:31000,return_1y:7.8,return_3y:7.2,return_5y:7.4,expense_ratio:0.25,risk:"Low",rating:5,min_sip:5000},
+  {name:"ICICI Pru Multi-Asset Direct",amc:"ICICI",category:"Debt",sub_category:"Multi-Asset",nav:68.30,aum_cr:24500,return_1y:12.4,return_3y:11.8,return_5y:10.2,expense_ratio:0.65,risk:"Moderate",rating:5,min_sip:100},
+  {name:"Nippon India Liquid Fund Direct",amc:"Nippon",category:"Debt",sub_category:"Liquid",nav:6282.40,aum_cr:14200,return_1y:7.2,return_3y:6.8,return_5y:6.4,expense_ratio:0.18,risk:"Low",rating:5,min_sip:100},
+  {name:"Nifty 50 Index Fund - UTI Direct",amc:"UTI",category:"Index",sub_category:"Large Cap Index",nav:142.60,aum_cr:18600,return_1y:19.4,return_3y:15.2,return_5y:14.1,expense_ratio:0.05,risk:"Moderate",rating:4,min_sip:100},
+  {name:"Nifty Next 50 Index - HDFC Direct",amc:"HDFC",category:"Index",sub_category:"Mid Cap Index",nav:58.20,aum_cr:6800,return_1y:24.8,return_3y:18.6,return_5y:16.4,expense_ratio:0.10,risk:"High",rating:4,min_sip:100},
+  {name:"Nifty Midcap 150 Index - Motilal Direct",amc:"Motilal Oswal",category:"Index",sub_category:"Mid Cap Index",nav:48.60,aum_cr:8400,return_1y:28.4,return_3y:22.1,return_5y:19.6,expense_ratio:0.30,risk:"High",rating:4,min_sip:500},
+  {name:"Kotak Gold & Silver Passive FoF",amc:"Kotak",category:"Index",sub_category:"Gold & Silver FoF",nav:14.82,aum_cr:1240,return_1y:18.6,return_3y:14.2,return_5y:12.8,expense_ratio:0.18,risk:"Moderate",rating:4,min_sip:100},
+  {name:"Nippon India Gold Savings Fund",amc:"Nippon",category:"Index",sub_category:"Gold FoF",nav:28.64,aum_cr:2140,return_1y:16.8,return_3y:12.4,return_5y:11.6,expense_ratio:0.09,risk:"Moderate",rating:4,min_sip:100},
+  {name:"HDFC Gold Fund Direct",amc:"HDFC",category:"Index",sub_category:"Gold FoF",nav:22.48,aum_cr:1680,return_1y:17.2,return_3y:12.8,return_5y:11.4,expense_ratio:0.12,risk:"Moderate",rating:4,min_sip:100},
+  {name:"SBI Gold Fund Direct",amc:"SBI",category:"Index",sub_category:"Gold FoF",nav:20.84,aum_cr:2820,return_1y:16.6,return_3y:12.1,return_5y:11.0,expense_ratio:0.10,risk:"Moderate",rating:4,min_sip:500},
+  {name:"Kotak Silver ETF FoF",amc:"Kotak",category:"Index",sub_category:"Silver FoF",nav:13.42,aum_cr:480,return_1y:14.8,return_3y:10.6,return_5y:0.0,expense_ratio:0.15,risk:"Moderate",rating:3,min_sip:100},
+  {name:"Mirae Asset S&P 500 Top 50 ETF FoF",amc:"Mirae Asset",category:"Index",sub_category:"International",nav:18.62,aum_cr:3240,return_1y:28.4,return_3y:14.8,return_5y:18.2,expense_ratio:0.07,risk:"High",rating:4,min_sip:100},
+  {name:"Motilal Oswal Nasdaq 100 FoF Direct",amc:"Motilal Oswal",category:"Index",sub_category:"International",nav:28.40,aum_cr:5600,return_1y:32.6,return_3y:16.4,return_5y:24.8,expense_ratio:0.10,risk:"High",rating:4,min_sip:500},
+];
+
+// ── Search handler with autocomplete dropdown ──
+function handleMfSearchInput() {
+  const q = document.getElementById("mfSearch").value.trim().toLowerCase();
+  const el = document.getElementById("mfSuggestions");
+  if (q.length < 2) { el.classList.remove("open"); applyFilter(q); return; }
+
+  // Search local + allFunds (merged, deduplicated)
+  const source = allFunds.length ? allFunds : LOCAL_MF_DATABASE;
+  const matches = source.filter(f =>
+    f.name.toLowerCase().includes(q) ||
+    f.amc.toLowerCase().includes(q) ||
+    f.sub_category.toLowerCase().includes(q)
+  ).slice(0, 8);
+
+  if (!matches.length) {
+    el.classList.remove("open");
+    applyFilter(q);
+    return;
+  }
+
+  const catBg = { Equity:"rgba(168,232,255,0.1)", Debt:"rgba(234,179,8,0.1)", Hybrid:"rgba(168,85,247,0.1)", Index:"rgba(64,229,108,0.1)" };
+  const catColor = { Equity:"var(--primary)", Debt:"#eab308", Hybrid:"#a855f7", Index:"var(--secondary)" };
+
+  el.innerHTML = matches.map(f => `
+    <div class="mf-sug-item" onclick="selectFund('${f.name.replace(/'/g,"\\'")}')">
+      <span class="mf-sug-name">${f.name}</span>
+      <span class="mf-sug-meta">
+        <span class="mf-sug-badge" style="background:${catBg[f.category]||'rgba(133,147,152,0.1)'};color:${catColor[f.category]||'var(--outline)'}">${f.sub_category}</span>
+        <span class="mf-sug-ret">+${f.return_1y}%</span>
+      </span>
+    </div>
+  `).join("");
+  el.classList.add("open");
+
+  // Also filter the main list
+  applyFilter(q);
+}
+
+function applyFilter(q) {
+  const source = allFunds.length ? allFunds : LOCAL_MF_DATABASE;
+  if (!q) { renderFundList(source); renderScatterChart(source); return; }
+  const filtered = source.filter(f =>
+    f.name.toLowerCase().includes(q) ||
+    f.amc.toLowerCase().includes(q) ||
+    f.sub_category.toLowerCase().includes(q)
+  );
+  renderFundList(filtered.length ? filtered : source);
+  renderScatterChart(filtered.length ? filtered : source);
+}
+
+function selectFund(name) {
+  document.getElementById("mfSuggestions").classList.remove("open");
+  openFundDetail(name);
+}
+
+// Close suggestions on outside click
+document.addEventListener("click", e => { if (!e.target.closest(".mf-search-wrap")) document.getElementById("mfSuggestions").classList.remove("open"); });
+
+
 async function loadFunds(category = "all") {
   try {
     const url = category === "all" ? `${API}/api/mutual-funds` : `${API}/api/mutual-funds?category=${category}`;
@@ -337,8 +470,11 @@ async function loadFunds(category = "all") {
     renderFundList(allFunds);
     renderScatterChart(allFunds);
   } catch (e) {
-    document.getElementById("fundList").innerHTML = `<div class="mf-loading" style="color:var(--on-tertiary-cont)">⚠ Backend offline — start the FastAPI server</div>`;
-    document.getElementById("amcTableBody").innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--on-tertiary-cont);padding:20px;">⚠ Backend offline — Fund House data unavailable</td></tr>`;
+    // Fallback: use local database
+    allFunds = LOCAL_MF_DATABASE;
+    const filtered = category === "all" ? allFunds : allFunds.filter(f => f.category === category);
+    renderFundList(filtered);
+    renderScatterChart(filtered);
   }
 }
 
@@ -349,8 +485,16 @@ async function loadTopFunds() {
     renderAlphaList(data.top_alpha, "topAlphaList");
     renderAlphaList(data.top_stable, "topStableList");
     document.getElementById("aiSignalText").textContent = data.ai_signal;
-    renderAmcTable(allFunds);
-  } catch (e) {}
+  } catch (e) {
+    // Fallback: compute from local data
+    const sorted = [...allFunds].sort((a,b) => b.return_1y - a.return_1y);
+    const topAlpha = sorted.slice(0,4).map(f => ({name:f.name, amc:f.amc, sub_category:f.sub_category, return_1y:f.return_1y}));
+    const stable = [...allFunds].filter(f => f.risk === "Low" || f.risk === "Moderate").sort((a,b) => b.return_3y - a.return_3y).slice(0,4).map(f => ({name:f.name, amc:f.amc, sub_category:f.sub_category, return_1y:f.return_1y}));
+    renderAlphaList(topAlpha, "topAlphaList");
+    renderAlphaList(stable.length ? stable : topAlpha, "topStableList");
+    document.getElementById("aiSignalText").textContent = "Flexi Cap and Small Cap funds show the highest risk-adjusted conviction scores. Nifty P/E at elevated levels — favour quality over momentum. Debt funds offer capital protection in a rate-peaking environment.";
+  }
+  renderAmcTable(allFunds);
 }
 
 function renderFundList(funds) {
@@ -362,7 +506,7 @@ function renderFundList(funds) {
     const stars = "★".repeat(f.rating) + "☆".repeat(5 - f.rating);
     const initial = f.amc[0];
     return `
-      <div class="fund-card" onclick="openFundDetail('${f.name}')">
+      <div class="fund-card" onclick="openFundDetail('${f.name.replace(/'/g,"\\'")}')">
         <div class="fund-avatar">${initial}</div>
         <div class="fund-info">
           <h4>${f.name}</h4>
@@ -383,7 +527,7 @@ function renderFundList(funds) {
           <div style="font-size:11px;color:var(--outline);margin-top:4px">3Y: +${f.return_3y}% · 5Y: +${f.return_5y}%</div>
         </div>
         <div class="fund-action">
-          <button class="btn-invest" onclick="event.stopPropagation();openFundDetail('${f.name}')">View Fund →</button>
+          <button class="btn-invest" onclick="event.stopPropagation();openFundDetail('${f.name.replace(/'/g,"\\'")}')">View Fund →</button>
           <div class="min-sip">Min ₹${f.min_sip}/mo</div>
         </div>
       </div>
@@ -405,6 +549,10 @@ function renderAlphaList(funds, containerId) {
 }
 
 function renderAmcTable(funds) {
+  if (!funds.length) {
+    document.getElementById("amcTableBody").innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--outline);padding:20px;">No fund data available</td></tr>`;
+    return;
+  }
   const amcs = {};
   funds.forEach(f => {
     if (!amcs[f.amc]) amcs[f.amc] = { returns: [], expense: [], count: 0 };
@@ -477,7 +625,8 @@ function renderScatterChart(funds) {
 function filterFunds(cat, btn) {
   document.querySelectorAll(".cat-btn").forEach(b => b.classList.remove("active"));
   btn.classList.add("active");
-  const filtered = cat === "all" ? allFunds : allFunds.filter(f => f.category === cat);
+  const source = allFunds.length ? allFunds : LOCAL_MF_DATABASE;
+  const filtered = cat === "all" ? source : source.filter(f => f.category === cat);
   renderFundList(filtered);
   renderScatterChart(filtered);
 }
@@ -508,27 +657,17 @@ async function loadIndices() {
   } catch(e) {}
 }
 
-// Search filter
-document.getElementById("mfSearch").addEventListener("input", e => {
-  const q = e.target.value.toLowerCase();
-  if (!q) { renderFundList(allFunds); return; }
-  const filtered = allFunds.filter(f => f.name.toLowerCase().includes(q) || f.amc.toLowerCase().includes(q) || f.sub_category.toLowerCase().includes(q));
-  renderFundList(filtered);
-});
-
 // Init — loadTopFunds must run AFTER loadFunds so allFunds is populated
 loadFunds().then(() => {
-  // Now that allFunds is ready, render the AMC table and sidebar
   loadTopFunds();
 
-  // Auto-search from URL param (e.g. ?search=Parag+Parikh)
+  // Auto-search from URL param
   const params = new URLSearchParams(window.location.search);
   const searchQ = params.get("search");
   if (searchQ) {
     const inp = document.getElementById("mfSearch");
     inp.value = searchQ;
     inp.focus();
-    // Highlight / filter
     const q = searchQ.toLowerCase();
     const filtered = allFunds.filter(f =>
       f.name.toLowerCase().includes(q) ||
@@ -536,7 +675,6 @@ loadFunds().then(() => {
       f.sub_category.toLowerCase().includes(q)
     );
     renderFundList(filtered.length ? filtered : allFunds);
-    // Smooth scroll to fund list
     setTimeout(() => document.getElementById("fundList").scrollIntoView({ behavior: "smooth", block: "start" }), 400);
   }
 });
