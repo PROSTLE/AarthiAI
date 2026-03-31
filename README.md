@@ -1,14 +1,34 @@
-# 📈 StockSense AI — AI-Powered Stock Market Prediction
+# 🌟 Aarthi AI — Your Empathetic Financial Planner
 
-> **Hackathon Project** | Built in 48 hours
+> **More than just numbers. We're here to help you.**
 
-##🎤 Elevator Pitch (30 seconds)
+## 💡 Our Mission
+At Aarthi AI, we believe that financial planning isn't just about stock charts and algorithms. It's about **you**. 
 
-*"StockSense AI uses deep learning and NLP to predict stock prices 5 days ahead.
-Enter any ticker — our LSTM model analyzes 2 years of market data and technical
-indicators, while FinBERT reads the latest financial news to gauge market
-sentiment. You get an interactive chart with predictions, a confidence score,
-a risk level, and a clear sentiment breakdown — all in seconds."*
+We go beyond traditional robo-advisors by taking a completely holistic approach to your financial well-being. By understanding your unique emotional state and personal circumstances, we craft tailored financial plans that bring you peace of mind.
+
+---
+
+## 🤝 How Aarthi AI Helps You
+
+We take four critical parameters into account before we even look at the markets:
+
+1. **🧠 Your Sentiments & Emotions**: How do you feel about money? Are you anxious about the future or dealing with market FOMO? We analyze your behavioral patterns to ensure our plan aligns with your emotional comfort zone.
+2. **📖 Your Background**: We look at your current life stage, career trajectory, and long-term aspirations.
+3. **💰 Your Money & Income**: A comprehensive look at your existing cash flows, debt obligations, and savings potential.
+4. **👨‍👩‍👧‍👦 Your Dependencies**: We factor in the people relying on you—whether that's aging parents, children, or a partner.
+
+**The Result:** Once we understand the complete picture of your life, Aarthi AI suggests a personalized, actionable financial plan designed specifically for *then* and *now*.
+
+---
+
+## ⚙️ The Technology Behind the Empathy
+
+While our approach is human-centric, our engine is powered by cutting-edge AI:
+
+- **Behavioral Analysis**: Natural Language Processing (NLP) models decode your sentiments and financial anxieties.
+- **Enterprise-Grade AI Models**: H2O, DataRobot, and Alteryx blend with deep learning LSTMs to evaluate market conditions.
+- **Holistic Planners**: Combining LLM reasoning (Google Gemini) with hard financial data to generate plain-English, empathetic advice and SIP (Systematic Investment Plan) recommendations.
 
 ---
 
@@ -16,8 +36,7 @@ a risk level, and a clear sentiment breakdown — all in seconds."*
 
 ### Prerequisites
 - Python 3.10+
-- Node.js (optional – only if you want a dev server for frontend)
-- ~2 GB disk for FinBERT model weights (auto-downloaded)
+- Node.js (optional – only if you want a dev server for the frontend)
 
 ### 1. Backend Setup
 
@@ -33,84 +52,23 @@ The API will be live at **http://localhost:8000**.
 
 ### 2. Frontend Setup
 
-Simply open `frontend/index.html` in your browser, **or** serve it:
+Simply open `frontend/index.html` in your browser, **or** serve it locally:
 
 ```bash
 cd frontend
-python -m http.server 3000
+npx http-server . -p 3000
 ```
 
 Then visit **http://localhost:3000**.
 
 ---
 
-## 🔗 API Endpoints
-
-| Method | Endpoint                   | Description                        |
-|--------|----------------------------|------------------------------------|
-| GET    | `/api/stock/{ticker}`      | Historical data + indicators       |
-| GET    | `/api/predict/{ticker}`    | LSTM 5-day price prediction        |
-| GET    | `/api/sentiment/{ticker}`  | FinBERT news sentiment analysis    |
-| GET    | `/api/summary/{ticker}`    | Combined analysis (all of above)   |
-
----
-
-## 🏗️ Architecture
-
-```
-User → React/HTML Frontend → FastAPI Backend
-                                ├── yfinance (stock data)
-                                ├── ta (technical indicators)
-                                ├── PyTorch LSTM (price prediction)
-                                └── FinBERT (sentiment analysis)
-```
-
----
-
-## 🧠 ML Pipeline
-
-1. **Data**: 2 years of daily OHLCV via Yahoo Finance
-2. **Features**: Close price (normalized via MinMaxScaler)
-3. **Model**: 2-layer LSTM (64 hidden units) → FC → 5-day output
-4. **Training**: 30 epochs, Adam optimizer, MSE loss, 85/15 train/test split
-5. **Inference**: Last 60-day window → next 5 closing prices
-
----
-
-## ☁️ Deployment (Optional)
-
-### Docker
-
-```dockerfile
-FROM python:3.11-slim
-WORKDIR /app
-COPY backend/ .
-RUN pip install --no-cache-dir -r requirements.txt
-EXPOSE 8000
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
-```
-
-```bash
-docker build -t stocksense-ai .
-docker run -p 8000:8000 stocksense-ai
-```
-
-### Cloud (Render / Railway / Fly.io)
-1. Push to GitHub
-2. Connect repo on Render → set build command: `pip install -r requirements.txt`
-3. Set start command: `uvicorn app:app --host 0.0.0.0 --port 8000`
-
----
-
 ## ⚠️ Disclaimer
 
-This project is for **educational and hackathon demonstration purposes only**.
-Stock market predictions generated by this tool are **not financial advice**.
-Past performance does not guarantee future results. Always consult a qualified
-financial advisor before making investment decisions.
+Aarthi AI is a conceptual tool designed for demonstration purposes. Generating a financial plan through AI is highly experimental and should **not** substitute professional financial advice. Always consult a certified, human financial advisor before making life-altering investment decisions.
 
 ---
 
 ## 📜 License
 
-MIT — feel free to fork and improve!
+MIT — Built to help people make better financial decisions.
