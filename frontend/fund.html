@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AarthiAI — Fund Overview</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    /* ── Fund Overview page styles ── */
+    .fo-back-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 16px; border-radius: var(--radius);
+      background: var(--bg-mid); border: 1px solid rgba(60,73,78,0.2);
+      color: var(--on-surf-var); font-size: 13px; font-weight: 600;
+      cursor: pointer; text-decoration: none; transition: all 0.15s ease;
+      margin-bottom: 24px; font-family: var(--font-headline);
+    }
+    .fo-back-btn:hover { border-color: var(--primary); color: var(--primary); }
+
+    /* Hero header */
+    .fo-header {
+      background: linear-gradient(135deg, rgba(168,232,255,0.04), rgba(64,229,108,0.03));
+      border: 1px solid rgba(60,73,78,0.12);
+      border-radius: var(--radius-lg); padding: 28px 32px; margin-bottom: 24px;
+      position: relative; overflow: hidden;
+    }
+    .fo-header::before {
+      content: ''; position: absolute; top: -40px; right: -40px;
+      width: 200px; height: 200px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(168,232,255,0.06), transparent 70%);
+      pointer-events: none;
+    }
+    .fo-header-top { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px; }
+    .fo-badge-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+    .fo-badge { padding: 3px 10px; border-radius: 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+    .fo-name { font-family: var(--font-headline); font-size: 30px; font-weight: 700; letter-spacing: -0.02em; color: var(--on-surface); line-height: 1.2; }
+    .fo-amc  { font-size: 13px; color: var(--outline); margin-top: 6px; }
+    .fo-nav-block { text-align: right; }
+    .fo-nav-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--outline); margin-bottom: 4px; }
+    .fo-nav-val { font-family: var(--font-headline); font-size: 32px; font-weight: 700; color: var(--primary); }
+    .fo-nav-sub { font-size: 12px; color: var(--outline); margin-top: 4px; }
+
+    /* Stats bar */
+    .fo-stats-bar {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 24px;
+    }
+    .fo-stat {
+      background: var(--bg-low); border: 1px solid rgba(60,73,78,0.12);
+      border-radius: var(--radius-lg); padding: 16px 18px;
+    }
+    .fo-stat-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--outline); margin-bottom: 6px; }
+    .fo-stat-value { font-family: var(--font-headline); font-size: 20px; font-weight: 700; color: var(--on-surface); }
+    .fo-stat-sub { font-size: 11px; color: var(--outline); margin-top: 3px; }
+
+    /* Returns grid */
+    .fo-returns-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px; }
+    @media (max-width: 600px) { .fo-returns-grid { grid-template-columns: 1fr; } }
+    .fo-return-card {
+      background: var(--bg-low); border: 1px solid rgba(60,73,78,0.12);
+      border-radius: var(--radius-lg); padding: 20px; text-align: center;
+      position: relative; overflow: hidden;
+    }
+    .fo-return-card::after {
+      content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 3px;
+      background: linear-gradient(90deg, var(--secondary), var(--primary));
+    }
+    .fo-ret-period { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--outline); margin-bottom: 8px; }
+    .fo-ret-val { font-family: var(--font-headline); font-size: 28px; font-weight: 700; color: var(--secondary); }
+    .fo-ret-label { font-size: 11px; color: var(--outline); margin-top: 4px; }
+
+    /* Main bento */
+    .fo-bento { display: grid; grid-template-columns: 1fr 340px; gap: 16px; }
+    @media (max-width: 1100px) { .fo-bento { grid-template-columns: 1fr; } }
+
+    /* Chart card */
+    .fo-chart-card { background: var(--bg-low); border: 1px solid rgba(60,73,78,0.12); border-radius: var(--radius-lg); padding: 22px; margin-bottom: 16px; }
+    .fo-chart-card h3 { font-family: var(--font-headline); font-size: 15px; font-weight: 700; margin-bottom: 16px; }
+    .fo-chart-wrap { height: 220px; }
+
+    /* AI analysis card */
+    .fo-ai-card {
+      background: linear-gradient(135deg, rgba(168,232,255,0.05), rgba(0,212,255,0.03));
+      border: 1px solid rgba(168,232,255,0.15); border-radius: var(--radius-lg); padding: 20px;
+      margin-bottom: 16px; position: relative; overflow: hidden;
+    }
+    .fo-ai-bg { position: absolute; right: -10px; bottom: -10px; font-size: 72px; opacity: 0.05; }
+    .fo-ai-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--primary); margin-bottom: 10px; }
+    .fo-ai-text { font-size: 13px; color: var(--on-surf-var); line-height: 1.65; }
+
+    /* Holdings / details */
+    .fo-detail-card { background: var(--bg-low); border: 1px solid rgba(60,73,78,0.12); border-radius: var(--radius-lg); padding: 20px; margin-bottom: 16px; }
+    .fo-detail-card h3 { font-family: var(--font-headline); font-size: 15px; font-weight: 700; margin-bottom: 14px; }
+    .fo-detail-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(60,73,78,0.08); font-size: 13px; }
+    .fo-detail-row:last-child { border-bottom: none; }
+    .fo-detail-label { color: var(--on-surf-var); }
+    .fo-detail-val { font-weight: 700; color: var(--on-surface); }
+
+    /* SIP CTA */
+    .fo-sip-card {
+      background: linear-gradient(135deg, rgba(64,229,108,0.08), rgba(0,192,80,0.04));
+      border: 1px solid rgba(64,229,108,0.2); border-radius: var(--radius-lg); padding: 24px;
+      text-align: center; margin-bottom: 16px; position: sticky; top: 80px;
+    }
+    .fo-sip-card h3 { font-family: var(--font-headline); font-size: 17px; font-weight: 700; color: var(--on-surface); margin-bottom: 8px; }
+    .fo-sip-card p { font-size: 13px; color: var(--on-surf-var); margin-bottom: 18px; line-height: 1.6; }
+    .fo-sip-btn {
+      display: block; width: 100%; padding: 13px;
+      background: linear-gradient(135deg, var(--secondary), var(--sec-cont));
+      color: var(--on-secondary); font-family: var(--font-headline); font-size: 14px;
+      font-weight: 700; border-radius: var(--radius); text-align: center;
+      cursor: pointer; border: none; transition: all 0.15s ease; text-decoration: none;
+    }
+    .fo-sip-btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
+    .fo-sip-min { font-size: 11px; color: var(--outline); margin-top: 8px; text-align: center; }
+
+    /* Risk meter */
+    .fo-risk-meter { margin-top: 12px; }
+    .fo-risk-bar { width: 100%; height: 8px; border-radius: 4px; overflow: hidden; background: var(--bg-highest); margin-bottom: 6px; }
+    .fo-risk-fill { height: 100%; border-radius: 4px; }
+    .fo-risk-labels { display: flex; justify-content: space-between; font-size: 10px; color: var(--outline); }
+
+    /* Loading */
+    .fo-loading { text-align: center; padding: 80px 20px; color: var(--outline); }
+    .fo-loading .material-symbols-outlined { font-size: 48px; display: block; margin-bottom: 16px; animation: spin 1.5s linear infinite; }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<!-- TOP NAV -->
+<nav class="topnav">
+  <div class="topnav-left">
+    <a href="index.html" class="brand-logo"><span class="brand-aarthi">Aarthi</span><span class="brand-ai">AI</span></a>
+    <div class="topnav-links">
+      <a class="tnav-link" href="index.html">Markets</a>
+      <a class="tnav-link active" href="mutual-funds.html">Funds</a>
+      <a class="tnav-link" href="sip.html">SIP</a>
+      <a class="tnav-link" href="company.html">Companies</a>
+    </div>
+  </div>
+  <div class="topnav-center"></div>
+  <div class="topnav-right">
+    <div class="live-badge"><span class="live-dot"></span><span>LIVE</span></div>
+    <span class="material-symbols-outlined topnav-icon">notifications</span>
+    <span class="material-symbols-outlined topnav-icon">settings</span>
+    <div class="topnav-avatar">AI</div>
+  </div>
+</nav>
+
+<!-- SIDE NAV -->
+<aside class="sidenav">
+  <div class="sidenav-brand">
+    <div class="sidenav-brand-icon"><span class="material-symbols-outlined">query_stats</span></div>
+    <div>
+      <div class="sidenav-brand-name"><span class="brand-aarthi">Aarthi</span><span class="brand-ai">AI</span></div>
+      <div class="sidenav-brand-sub">HIGH-PRECISION MODE</div>
+    </div>
+  </div>
+  <nav class="sidenav-links">
+    <a class="sidenav-link" href="index.html"><span class="material-symbols-outlined">grid_view</span> Dashboard</a>
+    <a class="sidenav-link active" href="mutual-funds.html"><span class="material-symbols-outlined">account_balance</span> Mutual Funds</a>
+    <a class="sidenav-link" href="sip.html"><span class="material-symbols-outlined">calculate</span> SIP Calculator</a>
+    <a class="sidenav-link" href="company.html"><span class="material-symbols-outlined">analytics</span> Company Analysis</a>
+    <a class="sidenav-link" href="index.html"><span class="material-symbols-outlined">swap_vert</span> Orders</a>
+    <a class="sidenav-link" href="index.html"><span class="material-symbols-outlined">history</span> History</a>
+  </nav>
+  <div class="sidenav-bottom">
+    <a class="sidenav-link" href="#"><span class="material-symbols-outlined">help</span> Support</a>
+    <a class="sidenav-link" href="#"><span class="material-symbols-outlined">logout</span> Logout</a>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="main-wrap">
+  <div class="view-content">
+
+    <!-- Back -->
+    <a href="mutual-funds.html" class="fo-back-btn">
+      <span class="material-symbols-outlined" style="font-size:16px">arrow_back</span>
+      Back to Funds
+    </a>
+
+    <!-- Loading -->
+    <div id="fo-loading">
+      <div class="fo-loading">
+        <span class="material-symbols-outlined">autorenew</span>
+        <p>Loading fund details...</p>
+      </div>
+    </div>
+
+    <!-- Content (populated by JS) -->
+    <div id="fo-content" style="display:none">
+
+      <!-- Hero Header -->
+      <div class="fo-header">
+        <div class="fo-header-top">
+          <div>
+            <div class="fo-badge-row" id="fo-badges"></div>
+            <div class="fo-name" id="fo-name">—</div>
+            <div class="fo-amc" id="fo-amc">—</div>
+          </div>
+          <div class="fo-nav-block">
+            <div class="fo-nav-label">NAV</div>
+            <div class="fo-nav-val" id="fo-nav">—</div>
+            <div class="fo-nav-sub" id="fo-nav-sub">—</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Returns -->
+      <div class="fo-returns-grid">
+        <div class="fo-return-card">
+          <div class="fo-ret-period">1 Year</div>
+          <div class="fo-ret-val" id="fo-ret1">—</div>
+          <div class="fo-ret-label">Annualised Return</div>
+        </div>
+        <div class="fo-return-card">
+          <div class="fo-ret-period">3 Years</div>
+          <div class="fo-ret-val" id="fo-ret3">—</div>
+          <div class="fo-ret-label">Annualised Return</div>
+        </div>
+        <div class="fo-return-card">
+          <div class="fo-ret-period">5 Years</div>
+          <div class="fo-ret-val" id="fo-ret5">—</div>
+          <div class="fo-ret-label">Annualised Return</div>
+        </div>
+      </div>
+
+      <!-- Stats bar -->
+      <div class="fo-stats-bar" id="fo-stats-bar"></div>
+
+      <!-- Main bento -->
+      <div class="fo-bento">
+        <!-- Left -->
+        <div>
+          <!-- Returns chart -->
+          <div class="fo-chart-card">
+            <h3>📈 Historical Performance Comparison</h3>
+            <div class="fo-chart-wrap">
+              <canvas id="fo-chart"></canvas>
+            </div>
+          </div>
+
+          <!-- AI Analysis -->
+          <div class="fo-ai-card">
+            <div class="fo-ai-bg">🤖</div>
+            <div class="fo-ai-title">🤖 AI Investment Signal</div>
+            <div class="fo-ai-text" id="fo-ai-text">Generating AI analysis for this fund...</div>
+          </div>
+
+          <!-- Fund Details -->
+          <div class="fo-detail-card">
+            <h3>📋 Fund Details</h3>
+            <div id="fo-details"></div>
+          </div>
+        </div>
+
+        <!-- Right sidebar -->
+        <div>
+          <!-- SIP CTA -->
+          <div class="fo-sip-card">
+            <div style="font-size:32px;margin-bottom:10px;">💰</div>
+            <h3>Start a SIP in this Fund</h3>
+            <p>Invest a fixed amount monthly with Rupee Cost Averaging. Build wealth systematically.</p>
+            <a id="fo-sip-link" href="sip.html" class="fo-sip-btn">🚀 Start SIP Calculator</a>
+            <div class="fo-sip-min" id="fo-min-sip">Min SIP: ₹500/month</div>
+          </div>
+
+          <!-- Risk Meter -->
+          <div class="fo-detail-card">
+            <h3>⚡ Risk Profile</h3>
+            <div id="fo-risk-label" style="font-size:18px;font-weight:700;margin-bottom:12px;"></div>
+            <div class="fo-risk-meter">
+              <div class="fo-risk-bar">
+                <div class="fo-risk-fill" id="fo-risk-fill" style="width:50%;"></div>
+              </div>
+              <div class="fo-risk-labels">
+                <span>Low</span><span>Moderate</span><span>High</span><span>Very High</span>
+              </div>
+            </div>
+            <div id="fo-risk-desc" style="font-size:12px;color:var(--on-surf-var);margin-top:12px;line-height:1.6;"></div>
+          </div>
+
+          <!-- Why this fund -->
+          <div class="fo-detail-card">
+            <h3>✅ Why Consider This Fund</h3>
+            <div id="fo-why" style="font-size:13px;color:var(--on-surf-var);line-height:1.7;"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <!-- /fo-content -->
+
+  </div>
+</div>
+
+<footer class="app-footer">
+  <div class="footer-content">
+    <div class="footer-brand">
+      <span class="footer-logo"><span class="brand-aarthi">Aarthi</span><span class="brand-ai">AI</span></span>
+      <span class="footer-tagline">Where Machine Learning Meets Market Intelligence</span>
+    </div>
+    <div class="footer-tech">
+      <span>Built with</span>
+      <span class="tech-badge">Python</span><span class="tech-badge">yfinance</span><span class="tech-badge">FastAPI</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+const API = "http://127.0.0.1:8001";
+
+// ── Fund universe (mirrors backend fund_intelligence.py) ──────────────────────
+// We'll fetch from /api/mutual-funds and find the matching fund by name.
+// Static enrichment data for AI signals and descriptions.
+
+const FUND_AI_SIGNALS = {
+  "SBI Bluechip Fund Direct":      "Strong large-cap pick. SBI's flagship fund with consistent alpha generation over 10+ years. Good for conservative equity investors looking for stability.",
+  "Axis Bluechip Fund Direct":     "Technically bullish — diversified large-cap exposure with growth tilt. Low volatility beta suitable as a portfolio anchor.",
+  "HDFC Top 100 Fund Direct":      "Value-oriented large cap. HDFC's legacy fund rewards patient, buy-and-hold investors. Dividend re-investment boosts compounding.",
+  "Axis Midcap Fund Direct":       "High-conviction midcap picks. Sector rotation strategy. Best held for 5+ years to capture India's growing mid-segment.",
+  "Mirae Asset Large Cap Fund":    "Global quality screen applied to Indian large caps. Excellent for first-generation investors wanting disciplined, low-churn portfolios.",
+  "Parag Parikh Flexi Cap Fund":   "Unique global diversification. Invests in Indian + international equities. Protects against INR depreciation. Excellent long-term track record.",
+  "Nippon India Liquid Fund":      "Ultra-safe parking. 7-day returns better than savings accounts. Use for emergency fund or short-term surplus.",
+  "ICICI Pru Balanced Advantage":  "Dynamic asset allocation — equity exposure adjusted based on market valuations. Ideal for risk-averse equity investors.",
+};
+
+const FUND_WHY = {
+  "SBI Bluechip Fund Direct":      "• Among India's oldest and most trusted large-cap funds\n• Consistent top-quartile 5Y returns\n• Low portfolio churn reduces tax drag\n• Ideal for SIP investors aged 25–40",
+  "Axis Bluechip Fund Direct":     "• Quality bias — invests in market leaders\n• Lower drawdowns vs. category average\n• Suitable for first-time equity investors\n• Excellent risk-adjusted return profile",
+  "HDFC Top 100 Fund Direct":      "• Value + quality combination\n• Large AUM = institutional trust\n• Regular dividend option available\n• Great for conservative aggressive hybrids",
+  "Axis Midcap Fund Direct":       "• India's mid-segment growing 2x GDP\n• Portfolio of emerging sector leaders\n• Higher return potential over 7+ years\n• Best combined with a large-cap anchor",
+  "Mirae Asset Large Cap Fund":    "• Global investment framework applied locally\n• Low expense ratio for category\n• Excellent downside protection\n• Consistent 5-star Morningstar rating",
+  "Parag Parikh Flexi Cap Fund":   "• Unique: holds Google, Microsoft, Amazon\n• Hedges against rupee depreciation\n• No front-end load\n• Best flexi-cap track record in India",
+  "Nippon India Liquid Fund":      "• Capital preservation guaranteed in normal markets\n• Same-day redemption available\n• Better than FD for 3-month surplus\n• No exit load after 7 days",
+  "ICICI Pru Balanced Advantage":  "• Goes defensive in overvalued markets automatically\n• Equity allocation ranges 30%–80%\n• Lower volatility than pure equity\n• Ideal for investors 10 years from retirement",
+};
+
+function getRiskMeta(risk) {
+  const map = {
+    "Low":       { pct: 20, color: "#40e56c", desc: "Very low volatility. Suitable for capital preservation and short-to-medium term goals." },
+    "Moderate":  { pct: 50, color: "#eab308", desc: "Moderate volatility. Suitable for long-term wealth creation with a balanced risk appetite." },
+    "High":      { pct: 75, color: "#f97316", desc: "High volatility. Expects market fluctuations. Best for 5+ year horizon investors." },
+    "Very High": { pct: 95, color: "#ef4444", desc: "Very high volatility. Only for experienced investors with long time horizon and strong risk tolerance." },
+  };
+  return map[risk] || map["Moderate"];
+}
+
+async function loadFund() {
+  const params = new URLSearchParams(window.location.search);
+  const fundName = params.get("fund");
+  if (!fundName) {
+    window.location.href = "mutual-funds.html";
+    return;
+  }
+
+  // Update page title
+  document.title = `AarthiAI — ${fundName}`;
+
+  try {
+    const res = await fetch(`${API}/api/mutual-funds`);
+    const data = await res.json();
+    const fund = data.funds.find(f => f.name === fundName) || data.funds[0];
+
+    renderFund(fund);
+    document.getElementById("fo-loading").style.display = "none";
+    document.getElementById("fo-content").style.display = "block";
+  } catch (e) {
+    document.getElementById("fo-loading").innerHTML = `
+      <div class="fo-loading">
+        <span style="font-size:48px;display:block;margin-bottom:16px">⚠️</span>
+        <p style="color:var(--on-tertiary-cont)">Could not load fund data — ensure the backend is running on port 8001.</p>
+        <a href="mutual-funds.html" style="display:inline-block;margin-top:16px;padding:10px 20px;background:var(--bg-mid);border-radius:var(--radius);color:var(--primary);font-weight:700">← Back to Funds</a>
+      </div>`;
+  }
+}
+
+function renderFund(f) {
+  const catColors = {
+    "Equity":  { bg: "rgba(168,232,255,0.1)", color: "var(--primary)" },
+    "Debt":    { bg: "rgba(234,179,8,0.1)",   color: "#eab308" },
+    "Hybrid":  { bg: "rgba(168,85,247,0.1)",  color: "#a855f7" },
+    "Index":   { bg: "rgba(64,229,108,0.1)",  color: "var(--secondary)" },
+  };
+  const riskColors = {
+    "Low":       "rgba(64,229,108,0.1)", "Moderate": "rgba(234,179,8,0.1)",
+    "High":      "rgba(249,115,22,0.1)", "Very High": "rgba(239,68,68,0.1)",
+  };
+  const cat = catColors[f.category] || catColors["Equity"];
+  const stars = "★".repeat(f.rating) + "☆".repeat(5 - f.rating);
+
+  // Badges
+  document.getElementById("fo-badges").innerHTML = `
+    <span class="fo-badge" style="background:${cat.bg};color:${cat.color}">${f.sub_category}</span>
+    <span class="fo-badge" style="background:${riskColors[f.risk]||'rgba(234,179,8,0.1)'};color:var(--on-surface)">${f.risk} Risk</span>
+    <span class="fo-badge" style="background:rgba(60,73,78,0.2);color:var(--outline)">${f.category}</span>
+    <span style="color:#eab308;font-size:13px;padding:3px 0">${stars}</span>`;
+
+  document.getElementById("fo-name").textContent = f.name;
+  document.getElementById("fo-amc").textContent = `${f.amc} Mutual Fund  ·  Min SIP ₹${f.min_sip}/mo`;
+  document.getElementById("fo-nav").textContent = `₹${f.nav.toFixed(2)}`;
+  document.getElementById("fo-nav-sub").textContent = `AUM ₹${(f.aum_cr/100).toFixed(0)}B  ·  Expense ${f.expense_ratio}%`;
+
+  // Returns
+  document.getElementById("fo-ret1").textContent = `+${f.return_1y}%`;
+  document.getElementById("fo-ret3").textContent = `+${f.return_3y}%`;
+  document.getElementById("fo-ret5").textContent = `+${f.return_5y}%`;
+
+  // Stats bar
+  document.getElementById("fo-stats-bar").innerHTML = [
+    { label: "AUM", value: `₹${(f.aum_cr/100).toFixed(0)}B`, sub: `₹${f.aum_cr} Cr` },
+    { label: "Expense Ratio", value: `${f.expense_ratio}%`, sub: "Annual" },
+    { label: "Min SIP", value: `₹${f.min_sip}`, sub: "Per month" },
+    { label: "NAV", value: `₹${f.nav.toFixed(2)}`, sub: "Net Asset Value" },
+    { label: "Rating", value: stars, sub: `${f.rating}/5 Stars` },
+    { label: "Category", value: f.category, sub: f.sub_category },
+  ].map(s => `
+    <div class="fo-stat">
+      <div class="fo-stat-label">${s.label}</div>
+      <div class="fo-stat-value" style="font-size:${s.label==='Rating'?'20px':'20px'}">${s.value}</div>
+      <div class="fo-stat-sub">${s.sub}</div>
+    </div>`).join('');
+
+  // SIP link
+  document.getElementById("fo-sip-link").href = `sip.html?fund=${encodeURIComponent(f.name)}`;
+  document.getElementById("fo-min-sip").textContent = `Min SIP: ₹${f.min_sip}/month`;
+
+  // Risk meter
+  const rm = getRiskMeta(f.risk);
+  const riskLabels = { "Low":"🟢 Low Risk","Moderate":"🟡 Moderate Risk","High":"🟠 High Risk","Very High":"🔴 Very High Risk" };
+  document.getElementById("fo-risk-label").textContent = riskLabels[f.risk] || f.risk;
+  document.getElementById("fo-risk-label").style.color = rm.color;
+  document.getElementById("fo-risk-fill").style.cssText = `width:${rm.pct}%;background:${rm.color}`;
+  document.getElementById("fo-risk-desc").textContent = rm.desc;
+
+  // AI signal
+  const sig = FUND_AI_SIGNALS[f.name] || `${f.name} shows solid ${f.return_3y}% 3Y annualised return. With an expense ratio of ${f.expense_ratio}% and ${f.risk.toLowerCase()} risk profile, it suits investors looking for ${f.category.toLowerCase()} exposure over a medium-to-long term horizon.`;
+  document.getElementById("fo-ai-text").textContent = sig;
+
+  // Why this fund
+  const why = FUND_WHY[f.name] || `• Consistent performance in the ${f.sub_category} category\n• AUM of ₹${f.aum_cr} Cr indicates strong investor trust\n• ${f.return_1y}% 1Y return puts it top in its category\n• Suitable for ${f.risk.toLowerCase()} risk investors`;
+  document.getElementById("fo-why").innerHTML = why.split('\n').map(line => `<div style="padding:3px 0">${line}</div>`).join('');
+
+  // Fund details table
+  document.getElementById("fo-details").innerHTML = [
+    { label: "Fund House",        value: `${f.amc} Mutual Fund` },
+    { label: "Category",          value: f.category },
+    { label: "Sub-Category",      value: f.sub_category },
+    { label: "Risk Level",        value: f.risk },
+    { label: "NAV",               value: `₹${f.nav.toFixed(2)}` },
+    { label: "AUM",               value: `₹${f.aum_cr} Cr` },
+    { label: "Expense Ratio",     value: `${f.expense_ratio}% p.a.` },
+    { label: "Minimum SIP",       value: `₹${f.min_sip}/month` },
+    { label: "1Y Return",         value: `+${f.return_1y}%` },
+    { label: "3Y Annualised",     value: `+${f.return_3y}%` },
+    { label: "5Y Annualised",     value: `+${f.return_5y}%` },
+    { label: "Star Rating",       value: `${f.rating}/5 ★` },
+  ].map(r => `
+    <div class="fo-detail-row">
+      <span class="fo-detail-label">${r.label}</span>
+      <span class="fo-detail-val">${r.value}</span>
+    </div>`).join('');
+
+  // Chart
+  const ctx = document.getElementById("fo-chart").getContext("2d");
+  const periods = ["1Y", "3Y", "5Y"];
+  const values  = [f.return_1y, f.return_3y, f.return_5y];
+
+  new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: periods,
+      datasets: [{
+        label: "Annualised Return (%)",
+        data: values,
+        backgroundColor: ["rgba(168,232,255,0.6)","rgba(64,229,108,0.6)","rgba(168,232,255,0.9)"],
+        borderRadius: 6,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: "#1a1c20",
+          borderColor: "rgba(60,73,78,0.3)", borderWidth: 1,
+          callbacks: { label: c => `+${c.raw}% Annualised` }
+        }
+      },
+      scales: {
+        x: { grid: { color: "rgba(60,73,78,0.1)" }, ticks: { color: "#859398", font: { weight: "700" } } },
+        y: { grid: { color: "rgba(60,73,78,0.1)" }, ticks: { color: "#859398", callback: v => v + "%" } }
+      }
+    }
+  });
+}
+
+// Auto-load on page ready
+loadFund();
+</script>
+</body>
+</html>

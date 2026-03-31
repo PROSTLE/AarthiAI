@@ -199,6 +199,23 @@
             display: flex;
             flex-direction: column;
             transition: max-width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            scrollbar-width: thin;           /* Firefox */
+            scrollbar-color: #e0e0e0 transparent; /* Firefox */
+        }
+
+        /* Chrome / Edge / Safari slim scrollbar */
+        .az-right::-webkit-scrollbar {
+            width: 5px;
+        }
+        .az-right::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .az-right::-webkit-scrollbar-thumb {
+            background: #e0e0e0;
+            border-radius: 3px;
+        }
+        .az-right::-webkit-scrollbar-thumb:hover {
+            background: #c0c0c0;
         }
 
         .az-header {
@@ -957,6 +974,26 @@
         </div>
     </section>
 
+    <!-- ═══ PERSONALIZED RECOMMENDATIONS (revealed after analysis) ═══ -->
+    <section id="rec-section" style="display:none; padding:80px 48px; background:#ffffff; position:relative; z-index:100;">
+        <div style="max-width:1100px; margin:0 auto;">
+            <div style="text-align:center; margin-bottom:48px;">
+                <div style="display:inline-flex;align-items:center;gap:8px;padding:6px 18px;background:rgba(96,158,69,0.1);border:1px solid rgba(96,158,69,0.25);border-radius:50px;font-size:13px;font-weight:600;color:#609E45;margin-bottom:16px;">✨ Personalized For You</div>
+                <h2 style="font-family:'Space Grotesk',sans-serif;font-size:clamp(28px,4vw,44px);font-weight:800;letter-spacing:-0.03em;color:#1a1a2a;margin-bottom:12px;">Your Investment Recommendations</h2>
+                <p style="font-size:16px;color:#666;max-width:500px;margin:0 auto;" id="rec-subtitle">Curated picks based on your city tier, income profile and financial goals.</p>
+            </div>
+            <div id="rec-filters" style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-bottom:36px;"></div>
+            <div id="rec-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:18px;margin-bottom:40px;"></div>
+            <div style="display:flex;align-items:flex-start;gap:10px;background:#fff8e1;border:1px solid #ffe082;border-radius:12px;padding:14px 20px;font-size:13px;color:#795548;line-height:1.6;max-width:800px;margin:0 auto;">
+                <span style="flex-shrink:0;font-size:16px;">⚠️</span>
+                <span>These are curated suggestions for <strong>educational purposes only</strong>. AarthiAI is not a SEBI-registered advisor. Please consult a certified financial planner before investing.</span>
+            </div>
+            <div style="text-align:center;margin-top:36px;">
+                <button onclick="openAnalyzer(event)" style="padding:14px 36px;background:linear-gradient(135deg,#3d7a2a,#4ADE80);color:#fff;font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:700;border:none;border-radius:50px;cursor:pointer;box-shadow:0 4px 20px rgba(96,158,69,0.3);transition:transform 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform=''">↩ Re-Analyze My Profile</button>
+            </div>
+        </div>
+    </section>
+
     <!-- ═══════════════════════════════════════════════
          ANALYZER OVERLAY — SPLIT LAYOUT
     ═══════════════════════════════════════════════ -->
@@ -985,11 +1022,6 @@
                 <h2>Your money,<br><span>working smarter.</span></h2>
                 <p>India's first AI-powered financial advisor built for every income level — from ₹5,000 to ₹5,00,000+
                 </p>
-                <div class="az-badges">
-                    <span class="az-badge">🔒 Private & Secure</span>
-                    <span class="az-badge">⚡ 2-min setup</span>
-                    <span class="az-badge">📊 AI-Powered</span>
-                </div>
             </div>
         </div>
 
@@ -1203,6 +1235,9 @@
                         <div id="r-plan"></div>
                     </div>
 
+                    <!-- Stock Recommendations injected here by analyzer.js -->
+                    <div id="srec-inject"></div>
+
                     <button class="btn-reanalyze" onclick="resetAnalyzer()">Re-analyze with Different Profile</button>
                 </div>
 
@@ -1227,6 +1262,7 @@
             overlay.classList.add("visible");
             overlay.classList.remove("results-mode"); // ensure form mode on open
             document.body.style.overflow = "hidden";
+            document.documentElement.style.overflow = "hidden"; // Prevent html scrollbar
             resetAnalyzer();
             const vid = document.getElementById("az-promo-video");
             if (vid) { vid.currentTime = 0; vid.play().catch(() => { }); }
@@ -1237,6 +1273,7 @@
             overlay.classList.remove("visible");
             overlay.classList.remove("results-mode");
             document.body.style.overflow = "";
+            document.documentElement.style.overflow = ""; // Restore html scrollbar
         }
 
         // Hook into the results display — called by analyzer.js when results are ready

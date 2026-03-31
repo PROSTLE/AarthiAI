@@ -338,6 +338,7 @@ async function loadFunds(category = "all") {
     renderScatterChart(allFunds);
   } catch (e) {
     document.getElementById("fundList").innerHTML = `<div class="mf-loading" style="color:var(--on-tertiary-cont)">⚠ Backend offline — start the FastAPI server</div>`;
+    document.getElementById("amcTableBody").innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--on-tertiary-cont);padding:20px;">⚠ Backend offline — Fund House data unavailable</td></tr>`;
   }
 }
 
@@ -361,7 +362,7 @@ function renderFundList(funds) {
     const stars = "★".repeat(f.rating) + "☆".repeat(5 - f.rating);
     const initial = f.amc[0];
     return `
-      <div class="fund-card" onclick="openSipForFund('${f.name}')">
+      <div class="fund-card" onclick="openFundDetail('${f.name}')">
         <div class="fund-avatar">${initial}</div>
         <div class="fund-info">
           <h4>${f.name}</h4>
@@ -382,7 +383,7 @@ function renderFundList(funds) {
           <div style="font-size:11px;color:var(--outline);margin-top:4px">3Y: +${f.return_3y}% · 5Y: +${f.return_5y}%</div>
         </div>
         <div class="fund-action">
-          <button class="btn-invest" onclick="event.stopPropagation();openSipForFund('${f.name}')">Start SIP</button>
+          <button class="btn-invest" onclick="event.stopPropagation();openFundDetail('${f.name}')">View Fund →</button>
           <div class="min-sip">Min ₹${f.min_sip}/mo</div>
         </div>
       </div>
@@ -481,8 +482,8 @@ function filterFunds(cat, btn) {
   renderScatterChart(filtered);
 }
 
-function openSipForFund(name) {
-  window.location.href = `sip.html?fund=${encodeURIComponent(name)}`;
+function openFundDetail(name) {
+  window.location.href = `fund.html?fund=${encodeURIComponent(name)}`;
 }
 
 // Load market indices
@@ -515,9 +516,30 @@ document.getElementById("mfSearch").addEventListener("input", e => {
   renderFundList(filtered);
 });
 
-// Init
-loadFunds();
-loadTopFunds();
+// Init — loadTopFunds must run AFTER loadFunds so allFunds is populated
+loadFunds().then(() => {
+  // Now that allFunds is ready, render the AMC table and sidebar
+  loadTopFunds();
+
+  // Auto-search from URL param (e.g. ?search=Parag+Parikh)
+  const params = new URLSearchParams(window.location.search);
+  const searchQ = params.get("search");
+  if (searchQ) {
+    const inp = document.getElementById("mfSearch");
+    inp.value = searchQ;
+    inp.focus();
+    // Highlight / filter
+    const q = searchQ.toLowerCase();
+    const filtered = allFunds.filter(f =>
+      f.name.toLowerCase().includes(q) ||
+      f.amc.toLowerCase().includes(q) ||
+      f.sub_category.toLowerCase().includes(q)
+    );
+    renderFundList(filtered.length ? filtered : allFunds);
+    // Smooth scroll to fund list
+    setTimeout(() => document.getElementById("fundList").scrollIntoView({ behavior: "smooth", block: "start" }), 400);
+  }
+});
 loadIndices();
 </script>
 
