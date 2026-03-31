@@ -1,4 +1,4 @@
-# 🌟 Aarthi AI — Your Empathetic Financial Planner
+#  Aarthi AI — Your Empathetic Financial Planner
 
 > **"More than just numbers. We are here to understand your life, your anxieties, and your dreams to help you build a future of financial peace."**
 
@@ -10,29 +10,29 @@ Traditional robo-advisors ask you your age, your risk tolerance on a scale of 1 
 
 ---
 
-## 🤝 How Aarthi AI Actually Helps You: The Four Pillars
+##  How Aarthi AI Actually Helps You: The Four Pillars
 
 To build a plan that truly serves you, Aarthi AI dynamically gathers and analyzes four deeply personal parameters. This isn't just data collection; this is how we formulate a strategy that protects you from yourself during market panics and pushes you to grow when you feel stuck.
 
-### 1. 🧠 Your Sentiments & Emotions
+### 1.  Your Sentiments & Emotions
 **The Parameter:** How do you actually feel about money and the market today? Are you experiencing FOMO (Fear Of Missing Out) because your friends are buying crypto? Are you feeling pervasive anxiety because the market is down to a 52-week low? 
 **How We Help You:** Aarthi AI continuously gauges your emotional state. If our behavioral profiling detects high anxiety or panic, Aarthi AI intervenes. We will not suggest high-risk small-cap funds when you are afraid; instead, we pivot your dashboard to highlight low-volatility, capital-preserving debt funds and liquid assets. We act as a psychological guardrail, giving you comforting, rational advice to prevent you from making emotionally driven, destructive financial decisions during market crashes.
 
-### 2. 📖 Your Background & Life Stage
+### 2.  Your Background & Life Stage
 **The Parameter:** Who are you? A 22-year-old software engineer landing their first job has radically different needs from a 55-year-old teacher approaching retirement. We look at your career trajectory, your health, your homeownership status, and your long-term aspirations.
 **How We Help You:** We align your investments with your real-world timeline. If you are young and just starting out, Aarthi AI builds a highly aggressive, equity-heavy growth portfolio to harness the power of compound interest over the next 30 years. If you are nearing retirement, Aarthi AI automatically transitions your plan to focus on dividend yields, stability, and wealth preservation so that a sudden market downturn doesn't wipe out your decades of hard work.
 
-### 3. 💰 Your Money, Debts & Income
+### 3.  Your Money, Debts & Income
 **The Parameter:** What is your actual cash flow? We look at your monthly take-home income, your fixed expenses, your credit card debt, and your emergency savings.
 **How We Help You:** Investing doesn't matter if you are drowning in 24% APR credit card debt. Aarthi AI evaluates your financial plumbing. Before we ever suggest buying a stock, our engine will build a relentless debt-payoff schedule for you. Once your high-interest debt is cleared, we help you set up an automated SIP (Systematic Investment Plan) that strictly fits within your monthly disposable income—ensuring you never over-leverage yourself or miss a utility payment because you invested too much.
 
-### 4. 👨‍👩‍👧‍👦 Your Dependencies
+### 4.  Your Dependencies
 **The Parameter:** Who relies on you? Do you have three children heading to college soon? Are you financially supporting an aging parent with rising healthcare costs? Are you a single-income household?
 **How We Help You:** Your financial plan is not just for you; it is for your ecosystem. Aarthi AI explicitly flags life events like college tuition or eldercare. If you have high dependencies, we immediately prioritize building a massive emergency fund (6-12 months of expenses) and aggressively recommend suitable term life and health insurance coverage. Only after your loved ones are protected do we begin allocating capital to volatile market instruments. We ensure your family's baseline survival is never subject to the whims of the stock market.
 
 ---
 
-## 🖥️ The Aarthi AI Launchpad (Landing Page & UX)
+##  The Aarthi AI Launchpad (Landing Page & UX)
 
 Aarthi AI is delivered through an incredibly rich, interactive, and beautiful web application designed to be as comforting as it is powerful. The platform is broadly divided into specific zones tailored to different aspects of your financial journey.
 
@@ -43,7 +43,7 @@ Aarthi AI is delivered through an incredibly rich, interactive, and beautiful we
 
 ---
 
-## ⚙️ The Deep Tech: Our AI & ML Models Explained
+##  The Deep Tech: Our AI & ML Models Explained
 
 To provide this level of empathetic, hyper-accurate financial advice, Aarthi AI orchestrates a massive pipeline of state-of-the-art machine learning models. We do not rely on simple moving averages; we blend deep learning, enterprise predictive AI, and generative language models.
 
@@ -71,7 +71,7 @@ Here is exactly what powers Aarthi AI under the hood, and why we use them:
 
 ---
 
-## 🚀 Installation & Quick Start
+##  Installation & Quick Start
 
 If you wish to spin up your own instance of the Aarthi AI ecosystem locally:
 
@@ -86,7 +86,7 @@ cd backend
 python -m venv venv
 source venv/bin/activate      # On Windows use: venv\Scripts\activate
 pip install -r requirements.txt
-uvicorn app:app --reload --port 8000
+uvicorn app:app --reload --port 8000 and on 8001
 ```
 *The core neuro-financial engine will spin up on **http://localhost:8000**.*
 
@@ -95,13 +95,13 @@ uvicorn app:app --reload --port 8000
 In a new terminal window:
 ```bash
 cd frontend
-npx http-server . -p 3000
+npx http-server . -p 3000 and on 3001
 ```
 *Access the empathetic UI at **http://localhost:3000**.*
 
 ---
 
-## ⚠️ Important Legal & Financial Disclaimer
+##  Important Legal & Financial Disclaimer
 
 Aarthi AI is a highly advanced prototype and demonstration of applied artificial intelligence in personal finance. **It is not a registered financial advisor or fiduciary.** 
 
@@ -109,6 +109,6 @@ The psychological guardrails, sentiment analyses, and predicted market trajector
 
 ---
 
-## 📜 License
+##  License
 
 MIT License. Aarthi AI was built with a singular belief: technology should serve humanity with empathy and grace. Feel free to fork, build upon, and continue this mission.
