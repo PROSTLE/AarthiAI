@@ -18,7 +18,7 @@ import time
 
 # ── Required environment variables (hackathon checklist) ──────────────────────
 # Defaults ONLY for API_BASE_URL and MODEL_NAME — NOT for HF_TOKEN
-API_BASE_URL = os.getenv("API_BASE_URL", "https://your-active-endpoint.openai.azure.com/")
+API_BASE_URL = os.getenv("API_BASE_URL", "https://api-inference.huggingface.co/v1/")
 MODEL_NAME   = os.getenv("MODEL_NAME", "gpt-4o-mini")
 HF_TOKEN     = os.getenv("HF_TOKEN")               # No default — must be set by user
 LOCAL_IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME")   # Optional: used with from_docker_image()

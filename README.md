@@ -1,3 +1,12 @@
+---
+title: AarthiAI
+emoji: 🦀
+colorFrom: red
+colorTo: green
+sdk: docker
+pinned: false
+---
+
 # 📈 Aarthi AI — Your Empathetic Financial Planner & AI-Powered Stock Market Prediction
 
 > **"More than just numbers. We are here to understand your life, your anxieties, and your dreams to help you build a future of financial peace."**
@@ -176,3 +185,4 @@ financial advisor before making investment decisions.
 ## 📜 License
 
 MIT — feel free to fork and improve!
+
