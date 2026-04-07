@@ -29,10 +29,10 @@ RUN python -c "import nltk; nltk.download('vader_lexicon')"
 COPY backend/ /app/backend/
 COPY frontend/ /app/frontend/
 
-# Expose the port
-EXPOSE 8000
+# Expose the port (7860 required for HuggingFace Spaces)
+EXPOSE 7860
 
 # Run the application
 # We use /app/backend as part of pythonpath to find modules
 ENV PYTHONPATH=/app/backend
-CMD ["uvicorn", "backend.app:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "backend.app:app", "--host", "0.0.0.0", "--port", "7860"]
