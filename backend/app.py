@@ -40,6 +40,147 @@ def root():
     return {"message": "StockSense AI API v3.1 is running 🚀 — Anti-gravity edition"}
 
 
+# ── OpenEnv-Compatible Endpoints (Required by hackathon checker) ──────────────
+# Implements the Gymnasium-style OpenEnv API: reset(), step(), state()
+# See: https://github.com/meta-pytorch/OpenEnv
+
+import uuid as _uuid
+import time as _time
+
+_episode_state = {
+    "episode_id": None,
+    "step_count": 0,
+    "started_at": None,
+    "done": False,
+}
+
+
+class StepActionRequest(BaseModel):
+    action: str = "hold"          # "buy" | "sell" | "hold"
+    ticker: str = "TCS.NS"
+    quantity: float = 1.0
+
+
+@app.post("/reset")
+def openenv_reset():
+    """
+    OpenEnv reset() — resets the trading portfolio and starts a new episode.
+    Required by the hackathon automated checker (POST /reset).
+    Returns initial observation in OpenEnv format.
+    """
+    portfolio = reset_portfolio()
+    _episode_state["episode_id"] = str(_uuid.uuid4())
+    _episode_state["step_count"] = 0
+    _episode_state["started_at"] = _time.time()
+    _episode_state["done"] = False
+
+    return {
+        "observation": {
+            "balance": portfolio.get("balance", 100000.0),
+            "positions": {},
+            "portfolio_value": portfolio.get("balance", 100000.0),
+            "message": "Trading environment reset. New episode started.",
+            "episode_id": _episode_state["episode_id"],
+        },
+        "state": {
+            "episode_id": _episode_state["episode_id"],
+            "step_count": 0,
+            "done": False,
+        },
+    }
+
+
+@app.post("/step")
+def openenv_step(request: StepActionRequest):
+    """
+    OpenEnv step() — executes a trade action and returns the resulting observation.
+    Actions: 'buy' | 'sell' | 'hold'
+    Required by the hackathon automated checker (POST /step).
+    """
+    _episode_state["step_count"] += 1
+    portfolio = get_portfolio()
+
+    reward = 0.0
+    result_msg = ""
+
+    try:
+        live = fetch_live_price(request.ticker)
+        current_price = live.get("price", 0)
+
+        if request.action == "buy":
+            cost = current_price * request.quantity
+            if portfolio["balance"] >= cost:
+                result = execute_buy(
+                    ticker=request.ticker,
+                    current_price=current_price,
+                    predicted_prices=[current_price * 1.02],
+                    confidence=0.7,
+                )
+                reward = 0.5
+                result_msg = result.get("message", "Buy executed")
+            else:
+                reward = -0.1
+                result_msg = "Insufficient balance"
+
+        elif request.action == "sell":
+            if request.ticker in portfolio.get("positions", {}):
+                result = execute_sell(request.ticker, current_price, "OpenEnv step sell")
+                reward = result.get("profit", 0) / max(current_price, 1)
+                result_msg = result.get("message", "Sell executed")
+            else:
+                reward = -0.1
+                result_msg = "No position to sell"
+
+        else:
+            reward = 0.0
+            result_msg = "Hold — no action taken"
+
+    except Exception as e:
+        result_msg = f"Action failed: {str(e)}"
+        reward = -0.05
+
+    portfolio = get_portfolio()
+    done = _episode_state["step_count"] >= 100  # episode ends after 100 steps
+    _episode_state["done"] = done
+
+    return {
+        "observation": {
+            "balance": portfolio.get("balance", 0),
+            "positions": {k: v.get("shares", 0) for k, v in portfolio.get("positions", {}).items()},
+            "portfolio_value": portfolio.get("balance", 0),
+            "message": result_msg,
+            "episode_id": _episode_state["episode_id"],
+        },
+        "reward": round(reward, 6),
+        "done": done,
+        "info": {
+            "step": _episode_state["step_count"],
+            "action": request.action,
+            "ticker": request.ticker,
+        },
+    }
+
+
+@app.get("/state")
+def openenv_state():
+    """
+    OpenEnv state() — returns current episode metadata.
+    Required by the hackathon automated checker (GET /state).
+    """
+    portfolio = get_portfolio()
+    return {
+        "episode_id": _episode_state.get("episode_id"),
+        "step_count": _episode_state.get("step_count", 0),
+        "done": _episode_state.get("done", False),
+        "started_at": _episode_state.get("started_at"),
+        "portfolio_summary": {
+            "balance": portfolio.get("balance", 0),
+            "total_positions": len(portfolio.get("positions", {})),
+            "bot_active": portfolio.get("bot_active", False),
+        },
+    }
+
+
 @app.get("/api/health")
 def health_check():
     """
