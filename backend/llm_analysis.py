@@ -9,6 +9,7 @@ from __future__ import annotations
 import os
 import json
 import time
+import math
 from dotenv import load_dotenv
 
 # Load .env first
@@ -71,6 +72,19 @@ _RETRY_DELAY = 1.5  # seconds, doubles on each retry
 # ── Cache: 30-minute TTL per ticker ──────────────────────────────────────────
 _LLM_CACHE_TTL = 30 * 60
 _llm_cache: dict = {}  # {ticker: {"result": ..., "timestamp": ...}}
+_TASK_EPS = 1e-6
+
+
+def _to_task_score(signed_score: float) -> float:
+    try:
+        value = float(signed_score)
+    except (TypeError, ValueError):
+        value = 0.0
+    if not math.isfinite(value):
+        value = 0.0
+    value = max(-1.0, min(1.0, value))
+    normalized = (value + 1.0) / 2.0
+    return max(_TASK_EPS, min(1.0 - _TASK_EPS, normalized))
 
 
 def _get_cached(ticker: str) -> dict | None:
@@ -190,7 +204,8 @@ def analyze_with_llm(
 
     # Default fallback
     fallback = {
-        "score": 0.0,
+        "score": 0.5,
+        "signed_score": 0.0,
         "direction": "neutral",
         "reasoning": "Gemini LLM offline — technical & sentiment signals active (13% weight held)",
         "source": "fallback",
@@ -226,10 +241,11 @@ def analyze_with_llm(
                 text = text.strip()
 
             parsed = json.loads(text)
-            score = max(-1.0, min(1.0, float(parsed.get("score", 0))))
+            signed_score = max(-1.0, min(1.0, float(parsed.get("score", 0))))
 
             result = {
-                "score": round(score, 3),
+                "score": round(_to_task_score(signed_score), 6),
+                "signed_score": round(signed_score, 3),
                 "direction": parsed.get("direction", "neutral"),
                 "reasoning": parsed.get("reasoning", ""),
                 "source": f"gemini/{_active_model}",

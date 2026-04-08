@@ -306,7 +306,7 @@ def predict(ticker: str):
         # ── Compute all 5 factors ──
         # 1. Sentiment
         sent = analyze_sentiment(ticker)
-        sentiment_score = float(sent.get("overall_score", 0))
+        sentiment_score = float(sent.get("overall_signed_score", sent.get("overall_score", 0)))
         sentiment_label = sent.get("overall_sentiment", "neutral")
 
         # 2. Technical signals
@@ -334,7 +334,7 @@ def predict(ticker: str):
             sentiment_label=sentiment_label,
             recent_prices=recent_prices,
         )
-        llm_score = float(llm.get("score", 0))
+        llm_score = float(llm.get("signed_score", llm.get("score", 0)))
         llm_direction = llm.get("direction", "neutral")
 
         # Market Context for Crisis Mode
@@ -381,7 +381,7 @@ def summary(ticker: str):
 
         # Compute factors
         sent = analyze_sentiment(ticker)
-        sentiment_score = float(sent.get("overall_score", 0))
+        sentiment_score = float(sent.get("overall_signed_score", sent.get("overall_score", 0)))
         sentiment_label = sent.get("overall_sentiment", "neutral")
 
         tech = score_technical_signals(df_ind)
@@ -410,7 +410,7 @@ def summary(ticker: str):
             sentiment_label=sentiment_label,
             recent_prices=recent_prices,
         )
-        llm_score = float(llm.get("score", 0))
+        llm_score = float(llm.get("signed_score", llm.get("score", 0)))
         llm_direction = llm.get("direction", "neutral")
 
         # Market Context for Crisis Mode
@@ -718,7 +718,7 @@ def trade_execute(ticker: str):
 
         prediction = train_and_predict(
             df,
-            sentiment_score=float(sent.get("overall_score", 0)),
+            sentiment_score=float(sent.get("overall_signed_score", sent.get("overall_score", 0))),
             technical_score=float(tech.get("score", 0)),
             sentiment_label=sent.get("overall_sentiment", "neutral"),
             technical_direction=tech.get("direction", "neutral"),
@@ -736,7 +736,7 @@ def trade_execute(ticker: str):
         }
 
         try:
-            sentiment_score = sent.get("overall_score", 0.0)
+            sentiment_score = sent.get("overall_signed_score", sent.get("overall_score", 0.0))
         except Exception:
             sentiment_score = 0.0
 

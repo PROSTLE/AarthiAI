@@ -4,6 +4,7 @@ from transformers import BertTokenizer, BertForSequenceClassification
 import numpy as np
 import yfinance as yf
 import nltk
+import math
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 
 try:
@@ -22,6 +23,20 @@ FINBERT_LABELS = ["positive", "negative", "neutral"]
 
 VADER_WEIGHT = 0.4
 FINBERT_WEIGHT = 0.6
+_SCORE_EPS = 1e-6
+
+
+def _to_strict_task_score(signed_score: float) -> float:
+    """Convert signed sentiment [-1, 1] into strict task score (0, 1)."""
+    try:
+        value = float(signed_score)
+    except (TypeError, ValueError):
+        value = 0.0
+    if not math.isfinite(value):
+        value = 0.0
+    value = max(-1.0, min(1.0, value))
+    normalized = (value + 1.0) / 2.0
+    return max(_SCORE_EPS, min(1.0 - _SCORE_EPS, normalized))
 
 # Extend VADER lexicon with financial context terms
 _vader.lexicon.update({
@@ -58,7 +73,12 @@ def _score_vader(text: str) -> dict:
         label = "neutral"
 
     confidence = round(abs(compound), 4)
-    return {"label": label, "score": round(compound, 4), "confidence": confidence}
+    return {
+        "label": label,
+        "score": round(_to_strict_task_score(compound), 6),
+        "signed_score": round(compound, 4),
+        "confidence": confidence,
+    }
 
 
 def _score_finbert(text: str) -> dict:
@@ -75,7 +95,8 @@ def _score_finbert(text: str) -> dict:
     
     return {
         "label": FINBERT_LABELS[idx],
-        "score": round(signed_score, 4),
+        "score": round(_to_strict_task_score(signed_score), 6),
+        "signed_score": round(signed_score, 4),
         "confidence": round(probs[idx], 4),
     }
 
@@ -84,7 +105,7 @@ def _score_text(text: str) -> dict:
     vader = _score_vader(text)
     finbert = _score_finbert(text)
 
-    combined_score = (VADER_WEIGHT * vader["score"]) + (FINBERT_WEIGHT * finbert["score"])
+    combined_score = (VADER_WEIGHT * vader["signed_score"]) + (FINBERT_WEIGHT * finbert["signed_score"])
 
     if combined_score > 0.1:
         label = "positive"
@@ -99,7 +120,8 @@ def _score_text(text: str) -> dict:
         "text": text,
         "label": label,
         "confidence": round(combined_confidence, 4),
-        "combined_score": round(combined_score, 4),
+        "combined_score": round(_to_strict_task_score(combined_score), 6),
+        "combined_signed_score": round(combined_score, 4),
         "vader": vader,
         "finbert": finbert,
     }
@@ -256,7 +278,8 @@ def analyze_sentiment(ticker: str) -> dict:
                 "text": h,
                 "label": label,
                 "confidence": 1.0,
-                "combined_score": override_score,
+                "combined_score": round(_to_strict_task_score(override_score), 6),
+                "combined_signed_score": override_score,
                 "method": "Keyword Override"
             })
             continue
@@ -271,12 +294,13 @@ def analyze_sentiment(ticker: str) -> dict:
             "articles_analyzed": 0,
             "details": [],
             "overall_sentiment": "neutral",
-            "overall_score": 0.0,
+            "overall_score": 0.5,
+            "overall_signed_score": 0.0,
             "contradictory_dampened": False,
             "method": "Hybrid (Keywords + VADER/FinBERT)",
         }
 
-    raw_scores = [d["combined_score"] for d in valid_details]
+    raw_scores = [d.get("combined_signed_score", 0.0) for d in valid_details]
     avg = float(np.mean(raw_scores))
 
     # Dampen one-off outliers
@@ -304,7 +328,8 @@ def analyze_sentiment(ticker: str) -> dict:
         "articles_analyzed": len(valid_details),
         "details": valid_details,
         "overall_sentiment": overall,
-        "overall_score": round(avg, 4),
+        "overall_score": round(_to_strict_task_score(avg), 6),
+        "overall_signed_score": round(avg, 4),
         "contradictory_dampened": contradictory_dampened,
         "method": "Hybrid (Keywords + VADER/FinBERT)",
     }

@@ -244,7 +244,9 @@ def _score_sentiment(sentiment_result: dict, sector: str) -> tuple[float, list[s
     signals = []
     score = 5.0
 
-    overall = _f(sentiment_result, "overall_score")
+    overall = _f(sentiment_result, "overall_signed_score")
+    if overall == 0.0:
+        overall = _f(sentiment_result, "overall_score")
     label = sentiment_result.get("overall_sentiment", "neutral")
     article_count = len(sentiment_result.get("articles", []))
 
