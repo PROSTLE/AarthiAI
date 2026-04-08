@@ -14,3 +14,4 @@ nltk>=3.8.1
 google-generativeai>=0.3.0
 # Note: torch is installed separately in Dockerfile to use CPU-only index
 python-dotenv>=1.0.0
+openai>=1.0.0
