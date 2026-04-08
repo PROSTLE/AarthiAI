@@ -19,6 +19,8 @@ RUN apt-get update && apt-get install -y \
 RUN pip install --no-cache-dir --upgrade pip
 COPY backend/requirements.txt /app/backend/requirements.txt
 RUN pip install --no-cache-dir -r /app/backend/requirements.txt
+# Explicitly install openai (required by inference.py)
+RUN pip install --no-cache-dir "openai>=1.0.0"
 # PyTroch CPU-only
 RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
 
@@ -28,6 +30,7 @@ RUN python -c "import nltk; nltk.download('vader_lexicon')"
 # Copy the code
 COPY backend/ /app/backend/
 COPY frontend/ /app/frontend/
+COPY inference.py /app/inference.py
 
 # Expose the port (7860 required for HuggingFace Spaces)
 EXPOSE 7860
