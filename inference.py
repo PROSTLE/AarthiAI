@@ -79,12 +79,13 @@ def log_end(task: str, result: str = ""):
 
 
 # ── Inference: Stock Analysis via LLM ────────────────────────────────────────
-def run_inference(ticker: str, indicators: dict, sentiment_score: float = 0.0) -> dict:
+def run_inference(ticker: str, indicators: dict, sentiment_score: float = 0.5) -> dict:
     """
     Run Aarthi AI's LLM-based stock inference for a given ticker.
     Uses the OpenAI client configured via API_BASE_URL / MODEL_NAME / HF_TOKEN.
 
-    Returns a dict with keys: score, direction, reasoning, source.
+    Returns a dict with keys: score (strict 0–1), score_100 (0–100 display),
+    direction, reasoning, source.
     """
     task_name = f"stock_inference:{ticker}"
     log_start(task_name)
@@ -135,18 +136,20 @@ def run_inference(ticker: str, indicators: dict, sentiment_score: float = 0.0) -
             raw_text = raw_text.strip()
 
         parsed = json.loads(raw_text)
-        sentiment_score_raw = float(parsed.get("score", 0.0))
+        sentiment_score_raw = float(parsed.get("score", 0.5))
         task_score = _sentiment_to_task_score(sentiment_score_raw)
+        score_100 = round(task_score * 100, 1)
 
         result = {
             "ticker":    ticker,
             "score":     round(task_score, 6),
+            "score_100": score_100,
             "direction": parsed.get("direction", "neutral"),
             "reasoning": parsed.get("reasoning", ""),
             "source":    f"openai/{MODEL_NAME}",
         }
 
-        log_end(task_name, f"direction={result['direction']}, score={result['score']}")
+        log_end(task_name, f"direction={result['direction']}, score={result['score']}, score_100={score_100}")
         return result
 
     except (json.JSONDecodeError, KeyError, ValueError) as parse_err:
@@ -195,12 +198,12 @@ TECHNICAL INDICATORS:
 - SMA_20: {indicators.get('SMA_20', 'N/A')} | SMA_50: {indicators.get('SMA_50', 'N/A')}
 - BB_Width: {indicators.get('BB_Width', 'N/A')} | ATR: {indicators.get('ATR', 'N/A')}
 
-SENTIMENT SCORE: {sentiment_score:+.3f}  (-1=very negative, 0=neutral, +1=very positive)
+SENTIMENT SCORE: {sentiment_score:+.3f}  (range: -0.99 very negative, 0 neutral, +0.99 very positive)
 
 Respond ONLY with this exact JSON format, no other text:
-{{"score": <float between -1.0 and 1.0>, "direction": "<bullish/bearish/neutral>", "reasoning": "<one concise sentence>"}}
+{{"score": <float strictly between -0.99 and 0.99, never exactly -1 or 1>, "direction": "<bullish/bearish/neutral>", "reasoning": "<one concise sentence>"}}
 
-Score guide: -1.0 = very bearish, 0 = neutral, +1.0 = very bullish"""
+Score guide: -0.99 = very bearish, 0 = neutral, +0.99 = very bullish"""
 
 
 def _strict_open_unit_interval(value: float) -> float:
@@ -218,6 +221,7 @@ def _sentiment_to_task_score(sentiment: float) -> float:
 def _fallback(reason: str = "") -> dict:
     return {
         "score":     0.5,
+        "score_100": 50.0,
         "direction": "neutral",
         "reasoning": f"LLM unavailable — fallback to neutral. Reason: {reason}",
         "source":    "fallback",
