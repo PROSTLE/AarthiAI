@@ -54,6 +54,15 @@ _episode_state = {
     "done": False,
 }
 
+_SCORE_EPS = 1e-6
+
+
+def _strict_task_score(value: float) -> float:
+    """Map arbitrary scalar into strict (0, 1) for OpenEnv-compatible graders."""
+    bounded = max(-1.0, min(1.0, float(value)))
+    normalized = (bounded + 1.0) / 2.0
+    return max(_SCORE_EPS, min(1.0 - _SCORE_EPS, normalized))
+
 
 class StepActionRequest(BaseModel):
     action: str = "hold"          # "buy" | "sell" | "hold"
@@ -143,6 +152,8 @@ def openenv_step(request: StepActionRequest):
     done = _episode_state["step_count"] >= 100  # episode ends after 100 steps
     _episode_state["done"] = done
 
+    task_reward = _strict_task_score(reward)
+
     return {
         "observation": {
             "balance": portfolio.get("balance", 0),
@@ -151,12 +162,13 @@ def openenv_step(request: StepActionRequest):
             "message": result_msg,
             "episode_id": _episode_state["episode_id"],
         },
-        "reward": round(reward, 6),
+        "reward": round(task_reward, 6),
         "done": done,
         "info": {
             "step": _episode_state["step_count"],
             "action": request.action,
             "ticker": request.ticker,
+            "raw_reward": round(reward, 6),
         },
     }
 

@@ -16,6 +16,8 @@ import sys
 import json
 import time
 
+_EPSILON = 1e-6
+
 # ── Optional OpenAI import (must not crash if dependency is unavailable) ──────
 try:
     from openai import OpenAI
@@ -133,11 +135,12 @@ def run_inference(ticker: str, indicators: dict, sentiment_score: float = 0.0) -
             raw_text = raw_text.strip()
 
         parsed = json.loads(raw_text)
-        score = max(-1.0, min(1.0, float(parsed.get("score", 0.0))))
+        sentiment_score_raw = float(parsed.get("score", 0.0))
+        task_score = _sentiment_to_task_score(sentiment_score_raw)
 
         result = {
             "ticker":    ticker,
-            "score":     round(score, 3),
+            "score":     round(task_score, 6),
             "direction": parsed.get("direction", "neutral"),
             "reasoning": parsed.get("reasoning", ""),
             "source":    f"openai/{MODEL_NAME}",
@@ -200,9 +203,21 @@ Respond ONLY with this exact JSON format, no other text:
 Score guide: -1.0 = very bearish, 0 = neutral, +1.0 = very bullish"""
 
 
+def _strict_open_unit_interval(value: float) -> float:
+    """Clamp numeric values into the strict open interval (0, 1)."""
+    return max(_EPSILON, min(1.0 - _EPSILON, float(value)))
+
+
+def _sentiment_to_task_score(sentiment: float) -> float:
+    """Convert a sentiment score in [-1, 1] to a strict task score in (0, 1)."""
+    bounded = max(-1.0, min(1.0, float(sentiment)))
+    normalized = (bounded + 1.0) / 2.0
+    return _strict_open_unit_interval(normalized)
+
+
 def _fallback(reason: str = "") -> dict:
     return {
-        "score":     0.0,
+        "score":     0.5,
         "direction": "neutral",
         "reasoning": f"LLM unavailable — fallback to neutral. Reason: {reason}",
         "source":    "fallback",
