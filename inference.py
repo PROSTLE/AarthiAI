@@ -138,18 +138,20 @@ def run_inference(ticker: str, indicators: dict, sentiment_score: float = 0.5) -
         parsed = json.loads(raw_text)
         sentiment_score_raw = float(parsed.get("score", 0.5))
         task_score = _sentiment_to_task_score(sentiment_score_raw)
-        score_100 = round(task_score * 100, 1)
+        # Final hard clamp — must be strictly (0, 1), never 0.0 or 1.0
+        task_score = max(_EPSILON, min(1.0 - _EPSILON, task_score))
+        rating_pct = round(task_score * 100, 1)
 
         result = {
             "ticker":    ticker,
             "score":     round(task_score, 6),
-            "score_100": score_100,
+            "rating_pct": rating_pct,
             "direction": parsed.get("direction", "neutral"),
             "reasoning": parsed.get("reasoning", ""),
             "source":    f"openai/{MODEL_NAME}",
         }
 
-        log_end(task_name, f"direction={result['direction']}, score={result['score']}, score_100={score_100}")
+        log_end(task_name, f"direction={result['direction']}, score={result['score']}, rating={rating_pct}%")
         return result
 
     except (json.JSONDecodeError, KeyError, ValueError) as parse_err:
@@ -221,7 +223,7 @@ def _sentiment_to_task_score(sentiment: float) -> float:
 def _fallback(reason: str = "") -> dict:
     return {
         "score":     0.5,
-        "score_100": 50.0,
+        "rating_pct": 50.0,
         "direction": "neutral",
         "reasoning": f"LLM unavailable — fallback to neutral. Reason: {reason}",
         "source":    "fallback",
