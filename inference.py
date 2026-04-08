@@ -15,6 +15,15 @@ import os
 import sys
 import json
 import time
+import subprocess
+
+# ── Auto-install openai if missing (hackathon validator may skip requirements.txt) ─
+try:
+    from openai import OpenAI
+except ImportError:
+    print("[STEP] openai not found, installing...", flush=True)
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "openai>=1.0.0", "--quiet"])
+    from openai import OpenAI
 
 # ── Required environment variables (hackathon checklist) ──────────────────────
 # Defaults ONLY for API_BASE_URL and MODEL_NAME — NOT for HF_TOKEN
@@ -24,8 +33,6 @@ HF_TOKEN     = os.getenv("HF_TOKEN")               # No default — must be set 
 LOCAL_IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME")   # Optional: used with from_docker_image()
 
 # ── OpenAI client (required by hackathon rules) ───────────────────────────────
-from openai import OpenAI
-
 client = OpenAI(
     base_url=API_BASE_URL,
     api_key=HF_TOKEN if HF_TOKEN else "hf-",       # HF models use HF_TOKEN as the key
