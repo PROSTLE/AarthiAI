@@ -15,15 +15,14 @@ import os
 import sys
 import json
 import time
-import subprocess
 
-# ── Auto-install openai if missing (hackathon validator may skip requirements.txt) ─
+# ── Optional OpenAI import (must not crash if dependency is unavailable) ──────
 try:
     from openai import OpenAI
-except ImportError:
-    print("[STEP] openai not found, installing...", flush=True)
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "openai>=1.0.0", "--quiet"])
-    from openai import OpenAI
+    OPENAI_IMPORT_ERROR = ""
+except Exception as import_err:
+    OpenAI = None
+    OPENAI_IMPORT_ERROR = str(import_err)
 
 # ── Required environment variables (hackathon checklist) ──────────────────────
 # Defaults ONLY for API_BASE_URL and MODEL_NAME — NOT for HF_TOKEN
@@ -32,11 +31,20 @@ MODEL_NAME   = os.getenv("MODEL_NAME", "gpt-4o-mini")
 HF_TOKEN     = os.getenv("HF_TOKEN")               # No default — must be set by user
 LOCAL_IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME")   # Optional: used with from_docker_image()
 
-# ── OpenAI client (required by hackathon rules) ───────────────────────────────
-client = OpenAI(
-    base_url=API_BASE_URL,
-    api_key=HF_TOKEN if HF_TOKEN else "hf-",       # HF models use HF_TOKEN as the key
-)
+# ── OpenAI client setup (optional at runtime) ─────────────────────────────────
+def _create_client():
+    if OpenAI is None:
+        return None
+    try:
+        return OpenAI(
+            base_url=API_BASE_URL,
+            api_key=HF_TOKEN if HF_TOKEN else "hf-",  # HF models use HF_TOKEN as the key
+        )
+    except Exception:
+        return None
+
+
+client = _create_client()
 
 
 # ── Docker image helper (optional) ───────────────────────────────────────────
@@ -85,6 +93,13 @@ def run_inference(ticker: str, indicators: dict, sentiment_score: float = 0.0) -
 
     # ── Call the LLM via OpenAI client ───────────────────────────────────────
     log_step("calling_llm", f"model={MODEL_NAME}, base_url={API_BASE_URL}")
+    if client is None:
+        reason = "openai client unavailable"
+        if OPENAI_IMPORT_ERROR:
+            reason = f"{reason}: {OPENAI_IMPORT_ERROR}"
+        log_end(task_name, f"ERROR: {reason}")
+        return _fallback(reason)
+
     try:
         response = client.chat.completions.create(
             model=MODEL_NAME,
