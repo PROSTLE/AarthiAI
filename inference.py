@@ -179,7 +179,7 @@ def run_batch_inference(tickers: list[str]) -> list[dict]:
             "BB_Width": 0.02,
             "ATR": 1.0,
         }
-        result = run_inference(ticker, indicators, sentiment_score=0.0)
+        result = run_inference(ticker, indicators, sentiment_score=0.5)
         results.append(result)
 
     log_end("batch_inference", f"completed={len(results)}")

@@ -176,9 +176,9 @@ TECHNICAL INDICATORS:
 NEWS SENTIMENT: {sentiment_label} (score: {sentiment_score:+.3f})
 
 Respond ONLY with this exact JSON format, no other text:
-{{"score": <float between -1.0 and 1.0>, "direction": "<bullish/bearish/neutral>", "reasoning": "<one sentence>"}}
+{{"score": <float strictly between -0.99 and 0.99, never exactly -1 or 1>, "direction": "<bullish/bearish/neutral>", "reasoning": "<one sentence>"}}
 
-Score guide: -1.0 = very bearish, 0 = neutral, +1.0 = very bullish"""
+Score guide: -0.99 = very bearish, 0 = neutral, +0.99 = very bullish"""
 
 
 def analyze_with_llm(
@@ -249,7 +249,7 @@ def analyze_with_llm(
                 "direction": parsed.get("direction", "neutral"),
                 "reasoning": parsed.get("reasoning", ""),
                 "source": f"gemini/{_active_model}",
-                "confidence": 1.0,
+                "confidence": 0.9,
             }
             _set_cached(ticker, result)
             return result
